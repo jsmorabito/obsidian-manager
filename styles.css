@@ -1,0 +1,3159 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Time Manager — merged stylesheet
+ *
+ * All selectors are prefixed with a feature namespace:
+ *   tm-          shared / multi-note editor
+ *   tm-pnp-      Periodic Note Panel (AgendaView sidebar)
+ *   tm-tdm-      Target Date Modal
+ *   tm-timeline- Timeline sidebar
+ *   tm-nav-      Leaf navigation controls
+ *   tm-inbox-    Inbox panel
+ *   rv-          Recently Viewed panel
+ *
+ * Body class toggles set by plugin:
+ *   tm-hide-frontmatter   hides YAML properties in the multi-note editor
+ *   tm-hide-backlinks     hides embedded backlinks in the multi-note editor
+ *
+ * Ported and adapted from:
+ *   quorafind/Obsidian-Daily-Notes-Editor (MIT)
+ *   liamcain/obsidian-periodic-notes (MIT)
+ *
+ * Table of contents:
+ *   §1  Embedded leaf / editor overrides   (.tm-editor)
+ *   §2  Multi-note view shell              (.tm-note-view, .tm-note-wrapper)
+ *   §3  Body class toggles                 (tm-hide-*)
+ *   §4  Popout window + mobile             (.is-popout-window, .is-phone)
+ *   §5  Leaf nav controls                  (.tm-nav-*)
+ *   §6  Timeline sidebar                   (.tm-timeline-*)
+ *   §7  Calendar events (shared)           (.tm-events-*, .tm-event-*)
+ *   §8  Periodic Note Panel                (.tm-pnp-*)
+ *   §9  Target Date Modal                  (.tm-tdm-*)
+ *   §10 Inbox panel                        (.tm-inbox-*)
+ *   §11 Recently Viewed panel              (.rv-*)
+ *   §12 Settings controls                  (.tm-format-preview, .tm-settings-*)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+
+/* ── §1  Embedded leaf / editor overrides ──────────────────────────────────
+ * Styles that reset or override Obsidian's default leaf/editor chrome so
+ * that embedded notes inside the multi-note view render flush and clean.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.tm-editor .cm-scroller {
+	padding: unset;
+}
+
+.tm-editor .workspace-leaf {
+	all: unset;
+}
+
+.tm-editor .tm-content {
+	display: none;
+}
+
+.tm-editor .workspace-leaf,
+.tm-editor .workspace-split {
+	height: 100%;
+	width: 100%;
+}
+
+.tm-editor .markdown-source-view.mod-cm6 .cm-editor {
+	min-height: auto;
+}
+
+.tm-editor .cm-content {
+	padding-bottom: 50px !important;
+	padding-top: 0 !important;
+}
+
+.tm-editor .view-content {
+	background: none !important;
+}
+
+.workspace-leaf-content[data-type="obsidian-time-tools-calendar-view"] > .view-content,
+.workspace-leaf-content[data-type="obsidian-time-tools-timeline-view"] > .view-content,
+.workspace-leaf-content[data-type="obsidian-time-tools-editor-view"] > .view-content {
+	padding: 0 !important;
+}
+
+.tm-editor .cm-scroller {
+	padding: 0 !important;
+	overflow-y: clip;
+}
+
+
+/* ── §2  Multi-note view shell ─────────────────────────────────────────────
+ * The outer scrolling container, card-style note wrappers, and the
+ * split layout used when the events side panel is open.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.tm-note-view {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-8);
+	padding: var(--size-4-4);
+	overflow-x: hidden;
+}
+
+/* Card-style note wrapper — uses only Obsidian design tokens */
+.tm-note-view .tm-note-wrapper {
+	background: var(--background-primary);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: 0 1px 4px var(--background-modifier-border);
+	max-width: var(--file-line-width);
+	margin-left: auto;
+	margin-right: auto;
+	width: 100%;
+	padding: var(--size-4-6);
+}
+
+.tm-note-view .embedded-backlinks {
+	min-height: unset !important;
+}
+
+
+/* ── §3  Body class toggles ────────────────────────────────────────────────
+ * Applied to <body> from plugin settings; hide global elements inside the
+ * multi-note editor without affecting normal editor tabs.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+body.tm-hide-frontmatter
+	.tm-note-view
+	.markdown-source-view.is-live-preview.show-properties
+	.metadata-container {
+	display: none;
+}
+
+body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
+	display: none;
+}
+
+
+/* ── §4  Popout window + mobile ────────────────────────────────────────────
+ * Overrides that keep the editor functional when Obsidian detaches a
+ * leaf into a popout window, and the phone tweak that forces the tab-bar
+ * visible when our view is open.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.is-popout-window .tm-editor .tm-content {
+	margin: 0;
+	border-radius: var(--he-popover-border-radius);
+	overflow: hidden;
+	height: auto;
+}
+
+.is-popout-window .tm-editor .workspace-leaf,
+.is-popout-window .tm-editor .workspace-split {
+	height: auto;
+	width: 100%;
+}
+
+.is-popout-window .tm-editor .cm-scroller {
+	height: auto;
+}
+
+.is-popout-window .tm-editor .markdown-source-view.mod-cm6 {
+	height: auto;
+}
+
+.is-popout-window .tm-editor .view-content {
+	height: auto;
+}
+
+.is-popout-window .tm-editor .workspace-leaf-content {
+	height: auto;
+}
+
+/* Force the tab-bar visible on phone when our view occupies the root split */
+.is-phone .mod-root .workspace-tabs:not(.mod-visible):has(.tm-note-view) {
+	display: flex !important;
+}
+
+/* ── Mobile overrides (body.is-mobile) ────────────────────────────────────
+ * Applied automatically when Obsidian runs on iOS / Android.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* Horizontal scroll columns fill the full viewport width on mobile */
+.is-mobile .tm-note-wrapper--horizontal {
+	width: 100%;
+	min-width: 0;
+}
+
+/* Disable the events side panel on mobile (too narrow to be useful) */
+.is-mobile .tm-content-split--panel-open {
+	flex-direction: column;
+}
+
+.is-mobile .tm-events-panel {
+	width: 100%;
+	height: 200px;
+	border-left: none;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* Larger breadcrumb touch targets on mobile */
+.is-mobile .tm-breadcrumb-bar {
+	padding: 4px 8px;
+}
+
+/* Increase note card padding slightly for easier touch on mobile */
+.is-mobile .tm-note-view .tm-note-wrapper {
+	padding: var(--size-4-4);
+}
+
+
+/* ── §5  Leaf nav controls ─────────────────────────────────────────────────
+ * Previous / next / date-label buttons rendered by the periodic-note
+ * nav-actions module (outside of the Svelte component).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.tm-nav-btn {
+	/* Inherits .clickable-icon sizing; ensure consistent vertical alignment */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tm-nav-date-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	padding: 0 6px;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	white-space: nowrap;
+	background: none;
+	border: none;
+	height: var(--input-height);
+	display: flex;
+	align-items: center;
+}
+
+.tm-nav-date-label:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+
+/* ── §6  Timeline sidebar ──────────────────────────────────────────────────
+ * Right-sidebar panel listing adjacent periodic notes for the active file.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.tm-timeline-section {
+	padding: var(--size-4-3) var(--size-4-4);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-timeline-heading {
+	margin: 0 0 var(--size-4-2) 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+/* Highlight the row whose granularity matches the currently open periodic note */
+.tm-timeline-heading--active {
+	color: var(--text-accent);
+}
+
+.tm-timeline-current--active {
+	color: var(--text-accent);
+}
+
+.tm-timeline-nav {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.tm-timeline-current {
+	flex: 1;
+	text-align: center;
+	font-weight: var(--font-semibold);
+	font-size: var(--font-ui-small);
+}
+
+.tm-timeline-link {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: var(--size-4-1) var(--size-4-2);
+	border-radius: var(--radius-s);
+	color: var(--text-accent);
+	font-size: var(--font-ui-medium);
+}
+
+.tm-timeline-link:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tm-timeline-link--missing {
+	color: var(--text-faint);
+	cursor: pointer; /* still clickable — will create the note */
+}
+
+.tm-timeline-empty {
+	padding: var(--size-4-4);
+	color: var(--text-muted);
+	font-style: italic;
+	text-align: center;
+}
+
+
+/* ── §7  Calendar events (shared) ──────────────────────────────────────────
+ * Event rows used in the Timeline sidebar and the settings swatch.
+ * Event cards in the Periodic Note Panel use §8 (.tm-pnp-event-*).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.tm-timeline-events {
+	margin-top: 4px;
+}
+
+.tm-events-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 2px 8px 8px;
+}
+
+.tm-events-loading,
+.tm-events-empty,
+.tm-events-error {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding: 2px 0;
+}
+
+.tm-events-error {
+	color: var(--text-error, var(--color-red));
+}
+
+.tm-event-row {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 2px 0;
+}
+
+.tm-event-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	background-color: var(--interactive-accent);
+}
+
+.tm-event-body {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.tm-event-summary {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tm-event-time {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* Settings page — color swatch next to calendar source name */
+.tm-calendar-source-swatch {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	margin-right: 6px;
+	vertical-align: middle;
+	flex-shrink: 0;
+}
+
+
+/* ── §8  Periodic Note Panel (.tm-pnp-*) ───────────────────────────────────
+ * Right-sidebar widget that activates when a periodic note is in focus.
+ * Shows a period header, nav/action toolbar, targets, and calendar agenda.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.tm-pnp {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+/* Ensure the agenda body takes remaining space after the work section */
+.tm-pnp .tm-pnp-agenda {
+	flex: 1;
+	min-height: 0; /* allow flex child to shrink below content size */
+}
+
+/* ── Header ── */
+
+.tm-pnp-header {
+	padding: 14px 14px 10px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.tm-pnp-badge {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+	background: var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 1px 6px;
+	margin-bottom: 4px;
+}
+
+.tm-pnp-badge--today {
+	color: var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+
+.tm-pnp-period-title {
+	margin: 0;
+	font-size: var(--font-ui-large);
+	font-weight: 600;
+	color: var(--text-normal);
+	line-height: 1.2;
+}
+
+/* ── Toolbar ── */
+
+.tm-pnp-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 6px 10px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.tm-pnp-toolbar-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 5px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: background 80ms ease, color 80ms ease;
+}
+
+.tm-pnp-toolbar-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tm-pnp-toolbar-btn--dimmed {
+	opacity: 0.35;
+}
+
+.tm-pnp-toolbar-btn svg {
+	width: 15px;
+	height: 15px;
+}
+
+/* Centre label that also acts as "go to today" */
+.tm-pnp-toolbar-period {
+	flex: 1;
+	text-align: center;
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	color: var(--text-muted);
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	border-radius: 5px;
+	padding: 4px 6px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	transition: background 80ms ease, color 80ms ease;
+}
+
+.tm-pnp-toolbar-period:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tm-pnp-toolbar-period--current {
+	color: var(--interactive-accent);
+}
+
+.tm-pnp-toolbar-spacer {
+	flex: 1;
+}
+
+/* ── Agenda body ── */
+
+.tm-pnp-agenda {
+	flex: 1;
+	overflow-y: auto;
+	padding: 6px 10px 20px;
+	display: flex;
+	flex-direction: column;
+}
+
+.tm-pnp-agenda-loading,
+.tm-pnp-agenda-empty,
+.tm-pnp-agenda-error {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	padding: 14px 4px;
+}
+
+.tm-pnp-agenda-error {
+	color: var(--text-error, var(--color-red));
+}
+
+/* ── Day group ── */
+
+.tm-pnp-day-group {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	margin-top: 12px;
+}
+
+.tm-pnp-day-group:first-child {
+	margin-top: 6px;
+}
+
+.tm-pnp-day-heading {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 2px 2px;
+}
+
+.tm-pnp-day-label {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-muted);
+}
+
+.tm-pnp-today-chip {
+	font-size: 10px;
+	font-weight: 600;
+	color: var(--interactive-accent);
+	background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+	border-radius: 4px;
+	padding: 1px 5px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.tm-pnp-day-heading--today .tm-pnp-day-label {
+	color: var(--interactive-accent);
+}
+
+/* ── Event card ── */
+
+.tm-pnp-event-card {
+	display: flex;
+	align-items: stretch;
+	border-radius: 7px;
+	background: var(--background-secondary);
+	overflow: hidden;
+	transition: background 80ms ease;
+	cursor: default;
+}
+
+.tm-pnp-event-card:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tm-pnp-event-stripe {
+	width: 3px;
+	flex-shrink: 0;
+	background-color: var(--tm-event-stripe-color, var(--interactive-accent));
+}
+
+.tm-pnp-event-body {
+	display: flex;
+	flex-direction: column;
+	padding: 7px 10px;
+	min-width: 0;
+	gap: 2px;
+}
+
+.tm-pnp-event-title {
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tm-pnp-event-time {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* ── Targets section ── */
+
+.tm-pnp-targets {
+	margin-top: 16px;
+	padding-top: 12px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.tm-pnp-targets-heading {
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin: 0 0 8px 0;
+}
+
+.tm-pnp-target-card {
+	display: flex;
+	align-items: stretch;
+	gap: 0;
+	border-radius: var(--radius-s);
+	background: var(--background-primary-alt);
+	margin-bottom: 4px;
+	overflow: hidden;
+	transition: background 80ms ease;
+}
+
+.tm-pnp-target-card:hover {
+	background: var(--background-modifier-hover);
+}
+
+.tm-pnp-target-stripe {
+	width: 3px;
+	flex-shrink: 0;
+	background: repeating-linear-gradient(
+		to bottom,
+		var(--color-accent) 0px,
+		var(--color-accent) 4px,
+		transparent 4px,
+		transparent 8px
+	);
+	border-radius: 2px 0 0 2px;
+}
+
+.tm-pnp-target-body {
+	display: flex;
+	flex-direction: column;
+	padding: 6px 8px;
+	gap: 2px;
+	min-width: 0;
+}
+
+.tm-pnp-target-title {
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	color: var(--text-normal);
+	text-overflow: ellipsis;
+	overflow: hidden;
+	white-space: nowrap;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.tm-pnp-target-title:hover {
+	text-decoration: underline;
+	color: var(--text-accent);
+}
+
+.tm-pnp-target-date {
+	font-size: calc(var(--font-ui-small) - 1px);
+	color: var(--text-muted);
+}
+
+/* ── Empty state ── */
+
+.tm-pnp-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	flex: 1;
+	padding: 32px 20px;
+	text-align: center;
+}
+
+.tm-pnp-empty-icon {
+	color: var(--text-faint);
+	opacity: 0.5;
+}
+
+.tm-pnp-empty-icon svg {
+	width: 32px;
+	height: 32px;
+}
+
+.tm-pnp-empty-text {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	margin: 0;
+	max-width: 180px;
+	line-height: 1.5;
+}
+
+
+/* ── §8b  AgendaView — Work section (Tasks / Targets toggle) ──────────────── */
+
+.tm-pnp-work-section {
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	display: flex;
+	flex-direction: column;
+	max-height: 45%;   /* don't let it crowd out the calendar events */
+	overflow: hidden;
+}
+
+/* Tab bar */
+.tm-pnp-work-tabs {
+	display: flex;
+	gap: 2px;
+	padding: 6px 10px 4px;
+	flex-shrink: 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-pnp-work-tab {
+	all: unset;
+	cursor: pointer;
+	font-size: var(--font-ui-smaller);
+	font-weight: 500;
+	padding: 2px 10px;
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	transition: background 80ms ease, color 80ms ease;
+}
+
+.tm-pnp-work-tab:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tm-pnp-work-tab--active {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* Body area — scrollable */
+.tm-pnp-work-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: 2px 0 6px;
+	display: flex;
+	flex-direction: column;
+}
+
+/* ── §9  Target Date Modal (.tm-tdm-*) ─────────────────────────────────────
+ * Modal for assigning a target date (granularity + period) to any file.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.tm-target-date-modal .modal-content {
+	padding: 0;
+}
+
+.tm-tdm {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	width: 320px;
+}
+
+.tm-tdm-preview {
+	padding: 12px 16px 0;
+}
+
+.tm-tdm-preview-text {
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.tm-tdm-tabs {
+	display: flex;
+	gap: 4px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-tdm-tab {
+	padding: 3px 10px;
+	border-radius: 999px;
+	border: none;
+	background: transparent;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: background 80ms ease, color 80ms ease;
+}
+
+.tm-tdm-tab:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tm-tdm-tab--active {
+	background: var(--background-modifier-active-hover);
+	color: var(--text-normal);
+	font-weight: 500;
+}
+
+.tm-tdm-grid {
+	padding: 12px 16px;
+	max-height: 340px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.tm-tdm-year-section {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.tm-tdm-year-label {
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	color: var(--text-muted);
+}
+
+.tm-tdm-year-label--current {
+	color: var(--text-normal);
+}
+
+.tm-tdm-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.tm-tdm-chips--year {
+	flex-wrap: wrap;
+}
+
+.tm-tdm-chip {
+	padding: 4px 10px;
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	background: transparent;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	cursor: pointer;
+	transition: background 80ms ease, border-color 80ms ease;
+	min-width: 48px;
+	text-align: center;
+}
+
+.tm-tdm-chip:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--background-modifier-border-hover);
+}
+
+.tm-tdm-chip--today {
+	border-color: var(--color-accent);
+	color: var(--color-accent);
+}
+
+.tm-tdm-chip--selected {
+	background: var(--color-accent);
+	border-color: var(--color-accent);
+	color: var(--text-on-accent);
+	font-weight: 600;
+}
+
+.tm-tdm-chip--selected:hover {
+	background: var(--color-accent-1);
+}
+
+.tm-tdm-day-wrap {
+	padding: 4px 0;
+}
+
+.tm-tdm-date-input {
+	width: 100%;
+	padding: 6px 8px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.tm-tdm-footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	padding: 10px 16px 14px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.tm-tdm-btn {
+	padding: 5px 14px;
+	border-radius: var(--radius-s);
+	border: none;
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	transition: background 80ms ease;
+}
+
+.tm-tdm-btn--ghost {
+	background: transparent;
+	color: var(--text-muted);
+}
+
+.tm-tdm-btn--ghost:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tm-tdm-btn--primary {
+	background: var(--color-accent);
+	color: var(--text-on-accent);
+	font-weight: 500;
+}
+
+.tm-tdm-btn--primary:hover {
+	background: var(--color-accent-1);
+}
+
+
+/* ── §10  Inbox panel (.tm-inbox-*) ───────────────────────────────────────────
+ * Left-sidebar panel for capturing and actioning files.
+ * All colors and sizes use Obsidian design tokens only — no hardcoded values.
+ * NOTE: the tm-inbox- prefix will be unified to tm- in a future pass.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Layout ── */
+
+.tm-inbox-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+/* ── Header ── */
+
+.tm-inbox-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+	gap: var(--size-4-2);
+}
+
+.tm-inbox-header-left {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	min-width: 0;
+}
+
+.tm-inbox-header-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.tm-inbox-header-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.tm-inbox-title {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.tm-inbox-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 16px;
+	padding: 0 5px;
+	border-radius: var(--radius-l);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	line-height: 1;
+	flex-shrink: 0;
+}
+
+.tm-inbox-header-right {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	flex-shrink: 0;
+}
+
+.tm-inbox-icon-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-faint);
+	cursor: pointer;
+	transition: background-color 0.1s ease, color 0.1s ease;
+	box-shadow: none;
+}
+
+.tm-inbox-icon-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+
+.tm-inbox-icon-btn.tm-inbox-btn-active {
+	color: var(--interactive-accent);
+}
+
+.tm-inbox-icon-btn svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* ── Sections ── */
+
+.tm-inbox-section {
+	padding: var(--size-4-2) 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-inbox-section:last-child {
+	border-bottom: none;
+}
+
+.tm-inbox-section-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: 0 var(--size-4-3) var(--size-4-1);
+}
+
+.tm-inbox-section-title {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-muted);
+}
+
+.tm-inbox-section-count {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+}
+
+.tm-inbox-section-empty {
+	padding: var(--size-4-2) var(--size-4-3);
+	font-size: var(--font-ui-small);
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+/* ── Item rows ── */
+
+.tm-inbox-item {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	margin: 1px var(--size-4-1);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	transition: background-color 0.1s ease;
+}
+
+.tm-inbox-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tm-inbox-item:active {
+	background-color: var(--background-modifier-active-hover);
+}
+
+.tm-inbox-item--scheduled {
+	opacity: 0.75;
+}
+
+.tm-inbox-item--scheduled:hover {
+	opacity: 1;
+}
+
+.tm-inbox-item-icon {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--icon-m);
+	height: var(--icon-m);
+	margin-top: 1px;
+	color: var(--nav-item-color);
+}
+
+.tm-inbox-item-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.tm-inbox-item-content {
+	flex: 1;
+	min-width: 0;
+}
+
+.tm-inbox-item-name {
+	font-size: var(--font-ui-small);
+	font-weight: 450;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.4;
+}
+
+.tm-inbox-item-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+	margin-top: 3px;
+}
+
+/* ── Meta chips ── */
+
+.tm-inbox-meta-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 1px 6px;
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	font-weight: 500;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.tm-inbox-chip-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.tm-inbox-chip-icon svg {
+	width: 10px;
+	height: 10px;
+}
+
+/* Remind chip */
+.tm-inbox-chip--remind {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+/* Due date chip */
+.tm-inbox-chip--due {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.tm-inbox-chip--overdue {
+	background-color: color-mix(in srgb, var(--color-red) 12%, transparent);
+	color: var(--color-red);
+}
+
+/* Priority chips — use semantic Obsidian palette variables */
+.tm-inbox-chip--priority {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.tm-inbox-chip--high {
+	background-color: color-mix(in srgb, var(--color-red) 12%, transparent);
+	color: var(--color-red);
+}
+
+.tm-inbox-chip--medium {
+	background-color: color-mix(in srgb, var(--color-orange) 15%, transparent);
+	color: var(--color-orange);
+}
+
+.tm-inbox-chip--low {
+	background-color: color-mix(in srgb, var(--color-blue) 12%, transparent);
+	color: var(--color-blue);
+}
+
+/* Tag chip */
+.tm-inbox-chip--tag {
+	background-color: var(--tag-background);
+	color: var(--tag-color);
+	border-radius: var(--tag-radius);
+	padding: var(--tag-padding-y) var(--tag-padding-x);
+	font-size: var(--tag-size);
+}
+
+/* ── Unread dot ── */
+
+.tm-inbox-unread-dot {
+	flex-shrink: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-top: 6px;
+	/* Invisible when read — keeps layout stable so items don't shift */
+	background-color: transparent;
+	transition: background-color 0.15s ease;
+}
+
+.tm-inbox-unread-dot.is-unread {
+	background-color: var(--interactive-accent);
+}
+
+/* ── Per-item action button (ellipsis) ── */
+
+.tm-inbox-item-right {
+	flex-shrink: 0;
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+	min-width: 28px;
+}
+
+.tm-inbox-item-age {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	white-space: nowrap;
+	line-height: 22px; /* match more-btn height so they swap cleanly */
+	transition: opacity 0.1s ease;
+}
+
+.tm-inbox-item:hover .tm-inbox-item-age {
+	opacity: 0;
+}
+
+.tm-inbox-item-actions {
+	display: none;
+	flex-shrink: 0;
+	margin-top: 0;
+}
+
+.tm-inbox-item:hover .tm-inbox-item-actions {
+	display: flex;
+}
+
+.tm-inbox-item-more-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-faint);
+	cursor: pointer;
+	transition: background-color 0.1s ease, color 0.1s ease;
+	box-shadow: none;
+}
+
+.tm-inbox-item-more-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+
+.tm-inbox-item-more-btn svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+/* ── Empty state ── */
+
+.tm-inbox-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-4-8) var(--size-4-4);
+	text-align: center;
+	color: var(--text-muted);
+}
+
+.tm-inbox-empty-icon {
+	margin-bottom: var(--size-4-3);
+	opacity: 0.35;
+}
+
+.tm-inbox-empty-icon svg {
+	width: 32px;
+	height: 32px;
+}
+
+.tm-inbox-empty-title {
+	margin: 0 0 var(--size-4-1);
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	color: var(--text-muted);
+}
+
+.tm-inbox-empty-sub {
+	margin: 0;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+
+/* ── Popovers (filter + display panels) ── */
+
+.tm-inbox-popover {
+	position: absolute;
+	min-width: 220px;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-l);
+	padding: var(--size-4-2);
+}
+
+.tm-inbox-popover-title {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	color: var(--text-faint);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	padding: var(--size-4-1) var(--size-4-2) var(--size-4-2);
+}
+
+/* Filter panel */
+
+.tm-inbox-filter-section {
+	padding: var(--size-4-1) 0 var(--size-4-2);
+}
+
+.tm-inbox-filter-section + .tm-inbox-filter-section {
+	border-top: 1px solid var(--background-modifier-border);
+	padding-top: var(--size-4-2);
+}
+
+.tm-inbox-filter-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	padding: 0 var(--size-4-2) var(--size-4-1);
+	display: block;
+}
+
+.tm-inbox-filter-option {
+	display: block;
+	width: 100%;
+	text-align: left;
+	padding: var(--size-4-1) var(--size-4-2);
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+	transition: background-color 0.1s ease;
+	box-shadow: none;
+}
+
+.tm-inbox-filter-option:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tm-inbox-filter-option.is-active {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-accent);
+	font-weight: 500;
+}
+
+/* Display panel */
+
+.tm-inbox-display-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--size-4-1) var(--size-4-2);
+	gap: var(--size-4-4);
+}
+
+.tm-inbox-display-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	white-space: nowrap;
+}
+
+.tm-inbox-display-select {
+	appearance: none;
+	-webkit-appearance: none;
+	background-color: var(--background-modifier-border);
+	border: none;
+	border-radius: var(--radius-s);
+	color: var(--text-normal);
+	font-size: var(--font-ui-smaller);
+	padding: 2px 22px 2px 8px;
+	cursor: pointer;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 6px center;
+}
+
+.tm-inbox-display-select:focus {
+	outline: none;
+	box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+.tm-inbox-display-divider {
+	height: 1px;
+	background-color: var(--background-modifier-border);
+	margin: var(--size-4-1) 0;
+}
+
+.tm-inbox-display-props {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+	padding: var(--size-4-1) var(--size-4-2) var(--size-4-2);
+}
+
+.tm-inbox-prop-pill {
+	padding: 2px 10px;
+	border-radius: var(--radius-l);
+	border: 1px solid var(--background-modifier-border);
+	background: transparent;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: 500;
+	cursor: pointer;
+	transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease;
+	box-shadow: none;
+}
+
+.tm-inbox-prop-pill:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tm-inbox-prop-pill.is-active {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* ── Custom toggle ── */
+
+.tm-inbox-toggle {
+	position: relative;
+	width: 32px;
+	height: 18px;
+	border-radius: var(--radius-l);
+	background-color: var(--background-modifier-border);
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+	flex-shrink: 0;
+}
+
+.tm-inbox-toggle::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background-color: var(--text-faint);
+	transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.tm-inbox-toggle.is-on {
+	background-color: var(--interactive-accent);
+}
+
+.tm-inbox-toggle.is-on::after {
+	transform: translateX(14px);
+	background-color: var(--text-on-accent);
+}
+
+/* ── Ribbon badge ── */
+
+.tm-inbox-ribbon-badge {
+	position: absolute;
+	top: 2px;
+	right: 2px;
+	min-width: 14px;
+	height: 14px;
+	padding: 0 3px;
+	border-radius: var(--radius-l);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: 9px;
+	font-weight: 700;
+	line-height: 14px;
+	text-align: center;
+	pointer-events: none;
+}
+
+/* The ribbon icon parent needs relative positioning for the badge */
+.side-dock-ribbon-action:has(.tm-inbox-ribbon-badge) {
+	position: relative;
+}
+
+/* ── Snooze modal ── */
+
+.tm-inbox-snooze-modal .modal-content,
+.tm-inbox-snooze-modal.modal-content {
+	padding: var(--size-4-4);
+}
+
+.tm-inbox-snooze-title {
+	margin: 0 0 var(--size-4-3);
+	font-size: var(--font-ui-medium);
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.tm-inbox-snooze-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.tm-inbox-snooze-btn {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: var(--size-4-2) var(--size-4-3);
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	cursor: pointer;
+	transition: background-color 0.1s ease;
+	text-align: left;
+	box-shadow: none;
+	gap: var(--size-4-3);
+}
+
+.tm-inbox-snooze-btn:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tm-inbox-snooze-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	font-weight: 450;
+}
+
+.tm-inbox-snooze-sublabel {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	white-space: nowrap;
+}
+
+.tm-inbox-snooze-custom .tm-inbox-snooze-label {
+	color: var(--text-accent);
+}
+
+/* ── Custom snooze / add-to-inbox modal fields ── */
+
+.tm-inbox-custom-fields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	margin-bottom: var(--size-4-4);
+}
+
+.tm-inbox-field-label {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-weight: 500;
+}
+
+.tm-inbox-field-label input {
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	padding: var(--size-4-1) var(--size-4-2);
+	width: 100%;
+}
+
+.tm-inbox-field-label input:focus {
+	outline: none;
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+}
+
+.tm-inbox-modal-footer {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: var(--size-4-3);
+}
+
+/* ── Scrollbar ── */
+
+.tm-inbox-container::-webkit-scrollbar {
+	width: 4px;
+}
+
+.tm-inbox-container::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.tm-inbox-container::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar-thumb-bg);
+	border-radius: 2px;
+}
+
+/* ── Line-jump flash highlight (used when navigating to an #inbox line) ── */
+
+@keyframes tm-tm-inbox-flash {
+	0%   { box-shadow: inset 0 0 0 9999px var(--text-highlight-bg); }
+	70%  { box-shadow: inset 0 0 0 9999px var(--text-highlight-bg); }
+	100% { box-shadow: inset 0 0 0 9999px transparent; }
+}
+
+.tm-tm-inbox-line-flash {
+	animation: tm-tm-inbox-flash 1.4s ease-out forwards !important;
+}
+
+
+/* ── §11  Recently Viewed panel (.rv-*) ────────────────────────────────────
+ * Left-sidebar panel showing the most recently opened files.
+ * Ported from jsmorabito/obsidian-recently-viewed (MIT).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.rv-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+.rv-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.rv-title-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+.rv-header-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+}
+
+.rv-header-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.rv-title {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--text-muted);
+}
+
+.rv-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 16px;
+	padding: 0 5px;
+	border-radius: var(--radius-l);
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	line-height: 1;
+}
+
+.rv-clear-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	color: var(--text-faint);
+	cursor: pointer;
+	transition: background-color 0.15s ease, color 0.15s ease;
+	box-shadow: none;
+}
+
+.rv-clear-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+
+.rv-clear-btn svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.rv-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--size-4-1) 0 var(--size-4-2);
+}
+
+.rv-item {
+	display: flex;
+	align-items: center;
+	padding: var(--size-4-1) var(--size-4-2) var(--size-4-1) var(--size-4-2);
+	margin: 1px var(--size-4-1);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	gap: var(--size-4-2);
+	transition: background-color 0.1s ease;
+	min-height: 36px;
+}
+
+.rv-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.rv-item:active {
+	background-color: var(--background-modifier-active-hover);
+}
+
+.rv-index {
+	flex-shrink: 0;
+	width: 14px;
+	font-size: var(--font-ui-smaller);
+	font-weight: 500;
+	color: var(--text-faint);
+	text-align: center;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+}
+
+.rv-file-icon {
+	flex-shrink: 0;
+	width: var(--icon-m);
+	height: var(--icon-m);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--nav-item-color);
+}
+
+.rv-file-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.rv-info {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.rv-name {
+	font-size: var(--font-ui-small);
+	font-weight: 450;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: 1.3;
+}
+
+.rv-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin-top: 1px;
+	line-height: 1.2;
+}
+
+.rv-time {
+	flex-shrink: 0;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	text-align: right;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.rv-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-4-8) var(--size-4-4);
+	text-align: center;
+	color: var(--text-muted);
+}
+
+.rv-empty-icon {
+	margin-bottom: var(--size-4-2);
+	opacity: 0.4;
+}
+
+.rv-empty-icon svg {
+	width: 28px;
+	height: 28px;
+}
+
+.rv-empty p {
+	margin: 0 0 var(--size-4-1);
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+}
+
+.rv-empty-sub {
+	font-size: var(--font-ui-smaller) !important;
+	color: var(--text-faint) !important;
+	font-weight: 400 !important;
+}
+
+.rv-list::-webkit-scrollbar {
+	width: 4px;
+}
+
+.rv-list::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.rv-list::-webkit-scrollbar-thumb {
+	background-color: var(--scrollbar-thumb-bg);
+	border-radius: 2px;
+}
+
+
+/* ── §12  Settings controls ────────────────────────────────────────────────
+ * Styles scoped to the plugin settings tab UI.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* Date format live preview shown beneath format input fields */
+.tm-format-preview {
+	margin-top: 4px;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-accent);
+}
+
+/* Template variable reference (collapsible <details> in the template-file setting) */
+.tm-template-vars-details { margin-top: 6px; }
+
+.tm-template-vars-summary {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	cursor: pointer;
+	user-select: none;
+}
+
+.tm-template-vars-table {
+	margin-top: 6px;
+	border-collapse: collapse;
+	width: 100%;
+}
+
+.tm-template-var-name {
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-accent);
+	padding: 2px 8px 2px 0;
+	white-space: nowrap;
+	vertical-align: top;
+}
+
+.tm-template-var-desc {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding: 2px 0;
+	vertical-align: top;
+}
+
+/* Inline color picker input next to calendar source name */
+.tm-settings-color-input {
+	display: none;
+	width: 36px;
+	height: 28px;
+	padding: 2px;
+	cursor: pointer;
+}
+
+/* ── §N  Target-date file preview popover (.tm-target-preview-popover) ────── */
+
+.tm-target-preview-popover {
+	position: fixed;
+	z-index: 200;
+	width: 280px;
+	max-height: 420px;
+	display: flex;
+	flex-direction: column;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-l);
+	overflow: hidden;
+	animation: tm-popover-in 100ms ease;
+}
+
+@keyframes tm-popover-in {
+	from { opacity: 0; transform: scale(0.97) translateY(-4px); }
+	to   { opacity: 1; transform: none; }
+}
+
+/* Header row */
+.tm-target-preview-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	padding: 10px 12px 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.tm-target-preview-title-wrap {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-width: 0;
+}
+
+.tm-target-preview-file-icon {
+	flex-shrink: 0;
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+}
+
+.tm-target-preview-file-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.tm-target-preview-title {
+	font-size: var(--font-ui-small);
+	font-weight: 600;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tm-target-preview-close {
+	flex-shrink: 0;
+	padding: 2px;
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tm-target-preview-close:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.tm-target-preview-close svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* Date badge */
+.tm-target-preview-date {
+	display: block;
+	flex-shrink: 0;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding: 4px 12px 6px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-target-preview-date--overdue {
+	color: var(--text-error, var(--color-red));
+}
+
+/* Content preview */
+.tm-target-preview-content {
+	flex: 1;
+	overflow-y: auto;
+	padding: 8px 12px;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	line-height: 1.5;
+}
+
+/* Clip headings inside preview so they don't dominate */
+.tm-target-preview-content h1,
+.tm-target-preview-content h2,
+.tm-target-preview-content h3 {
+	font-size: var(--font-ui-small);
+	margin: 4px 0;
+}
+
+.tm-target-preview-content p {
+	margin: 0 0 4px;
+}
+
+.tm-target-preview-empty {
+	color: var(--text-faint);
+	font-style: italic;
+}
+
+/* Footer */
+.tm-target-preview-footer {
+	flex-shrink: 0;
+	display: flex;
+	justify-content: flex-end;
+	padding: 8px 12px;
+	border-top: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+}
+
+.tm-target-preview-open {
+	font-size: var(--font-ui-smaller);
+	padding: 4px 14px;
+	border-radius: var(--radius-s);
+	cursor: pointer;
+}
+/* ── Chain bar ───────────────────────────────────────────────────────────── */
+
+.chain-status-bar-item {
+	position: fixed;
+	bottom: var(--size-4-1);
+	z-index: var(--layer-status-bar, 10);
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	height: 26px;
+	padding: 0 var(--size-4-2);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	box-shadow: var(--shadow-s);
+	margin-right: var(--size-4-1);
+	cursor: pointer;
+}
+
+/* Scrollable items area — max-width is set dynamically via JS after layout */
+.chain-sb-scroll {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	overflow-x: auto;
+	scrollbar-width: none; /* Firefox */
+}
+
+.chain-sb-scroll::-webkit-scrollbar {
+	display: none; /* Chrome / Safari */
+}
+
+.chain-sb-arrow {
+	color: var(--text-faint);
+	user-select: none;
+	line-height: 1;
+	display: flex;
+	align-items: center;
+}
+
+.chain-sb-arrow .svg-icon {
+	width: 10px;
+	height: 10px;
+}
+
+/* Current task — accent color text */
+.chain-sb-node--current {
+	color: var(--interactive-accent);
+	font-weight: var(--font-semibold);
+	white-space: nowrap;
+	user-select: none;
+}
+
+/* Shared dot base — all status circle nodes */
+.chain-sb-node--previous,
+.chain-sb-node--ready,
+.chain-sb-node--inProgress,
+.chain-sb-node--next {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.chain-sb-node--previous,
+.chain-sb-node--ready,
+.chain-sb-node--inProgress,
+.chain-sb-node--next {
+	transition: opacity 80ms ease;
+}
+
+.chain-sb-node--previous:hover,
+.chain-sb-node--ready:hover,
+.chain-sb-node--inProgress:hover,
+.chain-sb-node--next:hover {
+	opacity: 0.8;
+}
+
+.chain-sb-node--previous .svg-icon,
+.chain-sb-node--ready .svg-icon {
+	width: 10px;
+	height: 10px;
+}
+
+/* Previous task (Done) — filled circle with checkmark */
+.chain-sb-node--previous {
+	background-color: var(--text-faint);
+	border: 1.5px solid var(--text-faint);
+	color: var(--background-primary);
+}
+
+/* Ready task — outline with checkmark */
+.chain-sb-node--ready {
+	background-color: transparent;
+	border: 1.5px solid var(--text-faint);
+	color: var(--text-faint);
+}
+
+/* In progress task — half-filled circle */
+.chain-sb-node--inProgress {
+	background-color: transparent;
+	border: none;
+	color: var(--text-faint);
+	padding: 0;
+}
+
+.chain-sb-node--inProgress svg {
+	width: 100%;
+	height: 100%;
+	display: block;
+	overflow: visible;
+}
+
+/* Next task (Todo) — outline only */
+.chain-sb-node--next {
+	background-color: transparent;
+	border: 1.5px solid var(--text-faint);
+	transition: border-color 80ms ease;
+}
+
+.chain-sb-node--next:hover {
+	border-color: var(--text-faint);
+}
+
+/* Add button */
+.chain-sb-add-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 1.5px dashed var(--text-faint);
+	color: var(--text-faint);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: border-color 80ms ease, color 80ms ease;
+}
+
+.chain-sb-add-btn .svg-icon {
+	width: 10px;
+	height: 10px;
+}
+
+.chain-sb-add-btn:hover {
+	border-color: var(--interactive-accent);
+	color: var(--interactive-accent);
+	border-style: solid;
+}
+
+/* Chain icon */
+.chain-sb-chain-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-faint);
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: color 80ms ease;
+}
+
+.chain-sb-chain-icon .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.chain-sb-chain-icon:hover {
+	color: var(--interactive-accent);
+}
+
+/* Drag and drop */
+.chain-sb-node.is-dragging {
+	opacity: 0.35;
+	cursor: grabbing;
+}
+
+.chain-sb-node--previous,
+.chain-sb-node--inProgress,
+.chain-sb-node--next {
+	cursor: grab;
+}
+
+.chain-sb-node.chain-sb-drop-before {
+	box-shadow: -3px 0 0 var(--interactive-accent);
+}
+
+.chain-sb-node.chain-sb-drop-after {
+	box-shadow: 3px 0 0 var(--interactive-accent);
+}
+
+/* Open file highlight — active nav color on future circles */
+.chain-sb-node--next.is-open,
+.chain-sb-node--ready.is-open,
+.chain-sb-node--inProgress.is-open {
+	border: 1.5px solid var(--nav-item-color-active);
+	color: var(--nav-item-color-active);
+	background-color: transparent;
+}
+
+/* Completed + active file — filled circle in active color */
+.chain-sb-node--previous.is-open {
+	background-color: var(--nav-item-color-active);
+	border-color: var(--nav-item-color-active);
+	color: var(--background-primary);
+}
+
+/* Current task when a different file is active — slightly dimmed */
+.chain-sb-node--current.is-away {
+	opacity: 0.6;
+}
+
+/* ── Chain view ──────────────────────────────────────────────────────────── */
+
+.chain-view-container {
+	padding: var(--size-4-3);
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-4);
+}
+
+.chain-view-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	text-align: center;
+	padding: var(--size-4-8) var(--size-4-4);
+}
+
+.chain-view-empty--inline {
+	padding: var(--size-4-2) var(--size-4-3);
+	text-align: left;
+}
+
+/* ── Per-chain section ───────────────────────────────────────────────────── */
+
+.chain-view-section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+}
+
+.chain-view-section-header-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 var(--size-4-1);
+}
+
+.chain-view-section-header {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+/* ── View toggle ─────────────────────────────────────────────────────────── */
+
+.chain-view-toggle-group {
+	display: flex;
+	gap: var(--size-4-1);
+}
+
+.chain-view-toggle-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	background: none;
+	border: none;
+	border-radius: var(--radius-s);
+	color: var(--text-faint);
+	cursor: pointer;
+	transition: color 80ms ease, background-color 80ms ease;
+}
+
+.chain-view-toggle-btn .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+
+.chain-view-toggle-btn:hover {
+	color: var(--text-muted);
+	background-color: var(--background-modifier-hover);
+}
+
+.chain-view-toggle-btn.is-active {
+	color: var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+
+/* ── List view ───────────────────────────────────────────────────────────── */
+
+.chain-view-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	padding: var(--size-4-1);
+}
+
+.chain-view-list-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-1) var(--size-4-2);
+	border-radius: var(--radius-s);
+	cursor: grab;
+	transition: background-color 80ms ease;
+}
+
+.chain-view-list-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.chain-view-list-dot {
+	flex-shrink: 0;
+}
+
+.chain-view-list-row.is-dragging {
+	opacity: 0.35;
+	cursor: grabbing;
+}
+
+.chain-view-list-row.drop-before {
+	box-shadow: 0 -2px 0 var(--interactive-accent);
+}
+
+.chain-view-list-row.drop-after {
+	box-shadow: 0 2px 0 var(--interactive-accent);
+}
+
+/* List view dot overrides — geometry inherited from shared base, only color differs */
+
+/* The base geometry is already on .chain-sb-node--previous/ready/next above.
+   These selectors only add context-specific overrides for the list view. */
+
+/* Current: accent outline only, no checkmark (list-view only variant) */
+.chain-view-list-dot.chain-sb-node--current {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 1.5px solid var(--interactive-accent);
+	background: transparent;
+	flex-shrink: 0;
+	font-weight: normal;
+	white-space: normal;
+}
+
+.chain-view-list-name {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+.chain-view-list-name--current {
+	color: var(--interactive-accent);
+	font-weight: var(--font-semibold);
+}
+
+/* ── Dot track ───────────────────────────────────────────────────────────── */
+
+.chain-view-track {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	padding: var(--size-4-2) var(--size-4-1);
+	position: relative;
+}
+
+.chain-view-dot-wrapper {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.chain-view-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	cursor: grab;
+	flex-shrink: 0;
+	transition: transform 100ms ease, box-shadow 100ms ease;
+	background-color: var(--text-muted);
+}
+
+.chain-view-dot--current {
+	width: 9px;
+	height: 9px;
+	background-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.chain-view-dot.is-open {
+	background-color: var(--nav-item-color-active);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--nav-item-color-active) 30%, transparent);
+}
+
+.chain-view-dot--previous {
+	background-color: var(--text-faint);
+	opacity: 0.5;
+}
+
+.chain-view-dot--next {
+	background-color: var(--text-muted);
+}
+
+.chain-view-dot:hover,
+.chain-view-dot.is-active {
+	transform: scale(1.5);
+	box-shadow: 0 0 0 2px var(--background-modifier-hover);
+}
+
+.chain-view-dot--current.is-active {
+	box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+/* ── Drag state ──────────────────────────────────────────────────────────── */
+
+.chain-view-dot-wrapper.is-dragging {
+	opacity: 0.35;
+}
+
+.chain-view-dot-wrapper.is-dragging .chain-view-dot {
+	cursor: grabbing;
+}
+
+.chain-view-dot-wrapper.drop-before::before,
+.chain-view-dot-wrapper.drop-after::after {
+	content: '';
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 2px;
+	height: 16px;
+	background-color: var(--interactive-accent);
+	border-radius: 1px;
+}
+
+.chain-view-dot-wrapper.drop-before::before {
+	left: -5px;
+}
+
+.chain-view-dot-wrapper.drop-after::after {
+	right: -5px;
+}
+
+
+
+/* ── Dot tooltip (body-level, avoids sidebar clipping) ───────────────────── */
+
+.chain-dot-tip {
+	position: fixed;
+	transform: translateX(-50%);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: var(--size-4-1) var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+	pointer-events: none;
+	z-index: var(--layer-tooltip);
+	display: none;
+}
+
+.chain-dot-tip--visible {
+	display: block;
+}
+
+/* ── Detail panel ────────────────────────────────────────────────────────── */
+
+.chain-view-detail {
+	display: none;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	flex-wrap: wrap;
+}
+
+.chain-view-detail.is-visible {
+	display: flex;
+}
+
+.chain-view-detail__name {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* ── Shared item sub-elements (reused in detail panel) ───────────────────── */
+
+.chain-view-item--clickable {
+	cursor: pointer;
+}
+
+.chain-view-item--clickable:hover {
+	color: var(--text-accent);
+}
+
+.chain-view-item__reorder {
+	display: flex;
+	flex-direction: row;
+	gap: 1px;
+	flex-shrink: 0;
+}
+
+.chain-view-reorder-btn {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 0 2px;
+	font-size: var(--font-ui-smaller);
+	line-height: 1;
+	border-radius: var(--radius-s);
+}
+
+.chain-view-reorder-btn:hover:not(:disabled) {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.chain-view-reorder-btn:disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+
+.chain-view-item__role {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	flex-shrink: 0;
+}
+
+.chain-view-set-current-btn {
+	font-size: var(--font-ui-smaller);
+	padding: 2px var(--size-4-2);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.chain-view-set-current-btn:hover {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.chain-view-item__tags {
+	display: flex;
+	gap: var(--size-4-1);
+	flex-shrink: 0;
+}
+
+.chain-view-item__tag {
+	font-size: var(--font-ui-smaller);
+	padding: 1px var(--size-4-2);
+	border-radius: var(--radius-full);
+	background-color: var(--tag-background);
+	color: var(--tag-color);
+}
+
+/* ── New task modal ───────────────────────────────────────────────────────── */
+
+.new-task-modal .new-task-chain-section {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	margin-bottom: var(--size-4-2);
+	overflow: hidden;
+}
+
+.new-task-modal .new-task-chain-toggle {
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin: 0;
+}
+
+.new-task-modal .new-task-chain-detail {
+	padding: 0 var(--size-4-2);
+}
+
+.new-task-modal .new-task-chain-detail .setting-item {
+	border-top: 1px solid var(--background-modifier-border-focus);
+}
+
+/* ── Settings — chain schema sections ────────────────────────────────────── */
+
+.chain-schema-section {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	margin-bottom: var(--size-4-4);
+	overflow: hidden;
+}
+
+.chain-schema-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--size-4-2) var(--size-4-3);
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.chain-schema-header h3 {
+	margin: 0;
+	font-size: var(--font-ui-medium);
+	color: var(--text-normal);
+}
+
+.chain-schema-remove-btn {
+	font-size: var(--font-ui-smaller);
+	padding: 2px var(--size-4-2);
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	background: none;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.chain-schema-remove-btn:hover {
+	background-color: var(--background-modifier-error);
+	border-color: var(--background-modifier-error);
+	color: var(--text-error);
+}
+
+/* ── Chain suggest modal ─────────────────────────────────────────────────── */
+
+.chain-suggest-name {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.chain-suggest-detail {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+/* ── Chain multi-select modal ────────────────────────────────────────────── */
+
+.chain-multiselect-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-1) 0;
+	border-bottom: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+}
+
+.chain-multiselect-row:last-of-type {
+	border-bottom: none;
+}
+
+.chain-multiselect-row label {
+	cursor: pointer;
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+/* ── Linear view ────────────────────────────────────────────────────────── */
+
+.linear-view {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+/* Toolbar */
+.linear-view__toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--size-4-1) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+	gap: var(--size-4-2);
+}
+
+.linear-view__toolbar-left {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+	flex: 1;
+}
+
+.linear-view__ws-name {
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.linear-view__ws-select {
+	font-size: var(--font-ui-small);
+	background: transparent;
+	border: none;
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+	padding: 0;
+	cursor: pointer;
+	max-width: 140px;
+}
+
+/* Spinning state on sync button */
+.linear-view__sync-btn.is-loading .svg-icon {
+	animation: linear-spin 1s linear infinite;
+}
+
+@keyframes linear-spin {
+	from { transform: rotate(0deg); }
+	to   { transform: rotate(360deg); }
+}
+
+/* Filters */
+.linear-view__filters {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	padding: var(--size-4-2) var(--size-4-2) var(--size-4-1);
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.linear-view__filter-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.linear-view__search {
+	flex: 1;
+	height: 26px;
+	padding: 0 var(--size-4-2);
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	outline: none;
+}
+
+.linear-view__search:focus {
+	border-color: var(--interactive-accent);
+}
+
+.linear-view__team-select {
+	height: 24px;
+	padding: 0 4px;
+	background-color: var(--background-modifier-form-field);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	cursor: pointer;
+	flex-shrink: 0;
+	max-width: 100px;
+}
+
+.linear-view__toggles {
+	display: flex;
+	gap: var(--size-4-1);
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+.linear-view__filter-chip {
+	height: 20px;
+	padding: 0 7px;
+	background: none;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-full);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	cursor: pointer;
+	transition: background-color 80ms ease, border-color 80ms ease, color 80ms ease;
+	white-space: nowrap;
+}
+
+.linear-view__filter-chip:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.linear-view__filter-chip.is-active {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* Issue list */
+.linear-view__content {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--size-4-1) 0;
+}
+
+.linear-view__empty {
+	padding: var(--size-4-8) var(--size-4-4);
+	text-align: center;
+	font-size: var(--font-ui-small);
+	color: var(--text-faint);
+}
+
+/* Issue rows */
+.linear-view__issue-row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-2);
+	padding: var(--size-4-1) var(--size-4-3);
+	cursor: pointer;
+	transition: background-color 60ms ease;
+	position: relative;
+}
+
+.linear-view__issue-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.linear-view__issue-row.is-imported .linear-view__identifier {
+	color: var(--text-faint);
+}
+
+/* Linear priority colors — override these in your theme's CSS snippet if desired */
+:root {
+	--linear-priority-urgent: #e5484d;
+	--linear-priority-high:   #f76808;
+	--linear-priority-medium: #f5ce00;
+	--linear-status-done:     #22c55e;
+}
+
+/* Priority dot */
+.linear-view__priority-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+	margin-top: var(--size-4-1);
+}
+
+.linear-view__priority-dot--0 { background-color: var(--background-modifier-border); }
+.linear-view__priority-dot--1 { background-color: var(--linear-priority-urgent); }
+.linear-view__priority-dot--2 { background-color: var(--linear-priority-high); }
+.linear-view__priority-dot--3 { background-color: var(--linear-priority-medium); }
+.linear-view__priority-dot--4 { background-color: var(--text-faint); opacity: 0.6; }
+
+/* Row body */
+.linear-view__row-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1);
+	flex: 1;
+	min-width: 0;
+}
+
+.linear-view__row-title {
+	display: flex;
+	align-items: baseline;
+	gap: var(--size-4-1);
+	min-width: 0;
+}
+
+.linear-view__identifier {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	flex-shrink: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+.linear-view__title {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	min-width: 0;
+}
+
+/* Status badge */
+.linear-view__status-badge {
+	display: inline-flex;
+	align-items: center;
+	height: 15px;
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	letter-spacing: 0.02em;
+	width: fit-content;
+}
+
+.linear-view__status-badge--backlog,
+.linear-view__status-badge--unstarted {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+.linear-view__status-badge--started {
+	background-color: color-mix(in srgb, var(--interactive-accent) 20%, transparent);
+	color: var(--interactive-accent);
+}
+.linear-view__status-badge--completed {
+	background-color: color-mix(in srgb, var(--linear-status-done) 20%, transparent);
+	color: var(--linear-status-done);
+}
+.linear-view__status-badge--cancelled {
+	background-color: var(--background-modifier-border);
+	color: var(--text-faint);
+}
+
+/* Row action buttons — hidden until hover */
+.linear-view__row-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex-shrink: 0;
+	opacity: 0;
+	transition: opacity 80ms ease;
+	margin-top: 1px;
+}
+
+.linear-view__issue-row:hover .linear-view__row-actions {
+	opacity: 1;
+}
+
+.linear-view__action-btn {
+	width: 22px;
+	height: 22px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-s);
+	color: var(--text-muted);
+}
+
+.linear-view__action-btn .svg-icon {
+	width: 13px;
+	height: 13px;
+}
+
+.linear-view__action-btn:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+/* Settings — Linear workspace sections */
+.linear-workspace-list {
+	margin-bottom: var(--size-4-4);
+}
+
+.linear-workspace-section {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	margin-bottom: var(--size-4-3);
+	overflow: hidden;
+}
+
+/* ── Checkbox icons ──────────────────────────────────────────────────────── */
+
+.tt-checkbox-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--checkbox-size);
+	height: var(--checkbox-size);
+	cursor: pointer;
+	transition: opacity 0.1s;
+	vertical-align: middle;
+	user-select: none;
+	flex-shrink: 0;
+}
+
+.tt-checkbox-icon svg {
+	width: var(--checkbox-size);
+	height: var(--checkbox-size);
+	display: block;
+}
+
+.tt-checkbox-icon:hover {
+	opacity: 0.7;
+}
+
+/* Reading view spacing */
+.markdown-preview-view .tt-checkbox-icon {
+	margin-inline-end: 0.35em;
+}
+
+/* Editor: match native checkbox alignment exactly */
+.markdown-source-view .tt-checkbox-icon {
+	position: relative;
+	top: -0.1em;
+	vertical-align: middle;
+	margin-inline-end: 0.15em;
+}
+
+/* Not Started — dashed outline, muted grey */
+.tt-checkbox-icon[data-task-state=" "] {
+	color: #A1A1A1;
+}
+
+/* Completed — filled checkmark, purple */
+.tt-checkbox-icon[data-task-state="x"],
+.tt-checkbox-icon[data-task-state="X"] {
+	color: #8E68F5;
+}
+
+/* In Progress — half-filled, amber */
+.tt-checkbox-icon[data-task-state="/"],
+.tt-checkbox-icon[data-task-state=">"] {
+	color: #BD8E37;
+}
+
+/* Abandoned — filled X, muted grey */
+.tt-checkbox-icon[data-task-state="-"] {
+	color: #A1A1A1;
+}
+
+/* Planned — solid outline, muted grey */
+.tt-checkbox-icon[data-task-state="?"],
+.tt-checkbox-icon[data-task-state="!"] {
+	color: #A1A1A1;
+}
+
+/* Strikethrough task text for Done and Cancelled — reading view */
+.task-list-item[data-task="x"] > :not(.task-list-item-checkbox):not(.tt-checkbox-icon),
+.task-list-item[data-task="X"] > :not(.task-list-item-checkbox):not(.tt-checkbox-icon),
+.task-list-item[data-task="-"] > :not(.task-list-item-checkbox):not(.tt-checkbox-icon) {
+	text-decoration: line-through;
+	opacity: 0.6;
+}
+
+/* Strikethrough for Cancelled in the editor (live preview + source mode) */
+.markdown-source-view.mod-cm6 .cm-line[data-task="-"] {
+	text-decoration: line-through;
+	opacity: 0.6;
+}
+
+/* Settings: narrow mark input */
+.checkbox-status-mark {
+	max-width: 3.5em !important;
+	text-align: center;
+}
+
+/* Settings: icon preview cell — match checkbox size */
+.checkbox-status-preview {
+	flex-shrink: 0;
+	width: var(--checkbox-size);
+	height: var(--checkbox-size);
+	pointer-events: none;
+	margin-inline-end: 0;
+}
+
+.checkbox-status-preview svg {
+	width: var(--checkbox-size);
+	height: var(--checkbox-size);
+	display: block;
+}

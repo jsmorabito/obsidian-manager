@@ -1,0 +1,10 @@
+{
+	"id": "obsidian-manager",
+	"name": "Manager",
+	"version": "0.1.0",
+	"minAppVersion": "1.13.0",
+	"description": "Unified task and time management.",
+	"author": "John Morabito",
+	"authorUrl": "https://github.com/jmorabito",
+	"isDesktopOnly": false
+}
