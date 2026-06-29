@@ -22,6 +22,7 @@
 	import CalendarInboxPanel from "./CalendarInboxPanel.svelte";
 	import CalendarChainsPanel from "./CalendarChainsPanel.svelte";
 	import { getDragPayload, setDragPayload } from "./drag-state";
+	import { ReminderModal } from "../reminders/ReminderModal";
 	import { granularities, type Granularity } from "../periodic/types";
 	import { halfOf } from "../periodic/half-year";
 
@@ -976,6 +977,35 @@
 		menu.showAtMouseEvent(e);
 	}
 
+	function showReminderChipMenu(e: MouseEvent, tf: TFile): void {
+		e.preventDefault();
+		e.stopPropagation();
+		const menu = new Menu();
+		menu.addItem((item) =>
+			item
+				.setTitle("Open file")
+				.setIcon("file-text")
+				.onClick(() => void plugin.app.workspace.getLeaf(false).openFile(tf))
+		);
+		menu.addItem((item) =>
+			item
+				.setTitle("Reschedule reminder")
+				.setIcon("alarm-clock")
+				.onClick(() => {
+					new ReminderModal(plugin.app, (date, time) => {
+						void plugin.reminderService.setReminder(tf, date, time);
+					}).open();
+				})
+		);
+		menu.addItem((item) =>
+			item
+				.setTitle("Cancel reminder")
+				.setIcon("bell-off")
+				.onClick(() => void plugin.reminderService.clearReminder(tf))
+		);
+		menu.showAtMouseEvent(e);
+	}
+
 	function statusSvg(status: NoteStatus | null): string {
 		switch (status) {
 			case "Backlog":
@@ -1357,7 +1387,8 @@
 				{#if dayUntimedReminders.length > 0}
 					<div class="tm-cal-period-bar-chips">
 						{#each dayUntimedReminders as tf (tf.path)}
-							<div class="tm-cal-reminder-chip-cal" title="Reminder: {tf.basename} — drag to reschedule">
+							<div class="tm-cal-reminder-chip-cal" title="Reminder: {tf.basename} — drag to reschedule"
+								on:contextmenu={(e) => showReminderChipMenu(e, tf)}>
 								<Icon name="alarm-clock" size={11} />
 								<!-- svelte-ignore a11y-no-static-element-interactions -->
 								<span
@@ -1480,7 +1511,8 @@
 								</div>
 							{/each}
 							{#each hourReminders as tf (tf.path)}
-								<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+								<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule"
+								on:contextmenu={(e) => showReminderChipMenu(e, tf)}>
 									<Icon name="alarm-clock" size={11} />
 									<!-- svelte-ignore a11y-no-static-element-interactions -->
 									<span
@@ -1626,7 +1658,8 @@
 
 						<!-- Reminder chips -->
 						{#each remindersByDay.get(dk) ?? [] as tf (tf.path)}
-							<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+							<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule"
+								on:contextmenu={(e) => showReminderChipMenu(e, tf)}>
 								<Icon name="alarm-clock" size={11} />
 								<!-- svelte-ignore a11y-no-static-element-interactions -->
 								<span
@@ -1803,7 +1836,8 @@
 						</div>
 					{/each}
 					{#each reminders as tf (tf.path)}
-						<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+						<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule"
+								on:contextmenu={(e) => showReminderChipMenu(e, tf)}>
 							<Icon name="alarm-clock" size={11} />
 							<!-- svelte-ignore a11y-no-static-element-interactions -->
 							<span
@@ -1885,7 +1919,8 @@
 							</div>
 						{/each}
 						{#each hourReminders as tf (tf.path)}
-							<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+							<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule"
+								on:contextmenu={(e) => showReminderChipMenu(e, tf)}>
 								<Icon name="alarm-clock" size={11} />
 								<!-- svelte-ignore a11y-no-static-element-interactions -->
 								<span
@@ -1924,7 +1959,8 @@
 			{#if yearViewReminders.length > 0}
 				<div class="tm-cal-period-bar-chips">
 					{#each yearViewReminders as tf (tf.path)}
-						<div class="tm-cal-reminder-chip-cal" title="Reminder: {tf.basename} — drag to reschedule">
+						<div class="tm-cal-reminder-chip-cal" title="Reminder: {tf.basename} — drag to reschedule"
+								on:contextmenu={(e) => showReminderChipMenu(e, tf)}>
 							<Icon name="alarm-clock" size={11} />
 							<!-- svelte-ignore a11y-no-static-element-interactions -->
 							<span
