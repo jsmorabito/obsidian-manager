@@ -212,6 +212,87 @@
 		halfYearTargets = hm;
 	}
 
+	/** Files with a reminderDate, keyed by "YYYY-MM-DD". */
+	let remindersByDay: Map<string, TFile[]> = new Map();
+
+	$: {
+		void metaVersion;
+		const start = rangeStart.format("YYYY-MM-DD");
+		const end = rangeEnd.format("YYYY-MM-DD");
+		remindersByDay = plugin.reminderService.getFilesWithReminderInRange(start, end);
+	}
+
+	/** Day-view reminders split by timed (keyed by hour) vs untimed (all-day bar). */
+	let dayUntimedReminders: TFile[] = [];
+	let dayTimedReminders: Map<number, TFile[]> = new Map();
+
+	$: {
+		void metaVersion;
+		void remindersByDay;
+		const files = remindersByDay.get(dayKey(anchor)) ?? [];
+		const untimedArr: TFile[] = [];
+		const timedMap = new Map<number, TFile[]>();
+		for (const tf of files) {
+			const r = plugin.reminderService.getReminder(tf);
+			if (r?.time && /^\d{1,2}:\d{2}$/.test(r.time)) {
+				const h = parseInt(r.time.split(":")[0], 10);
+				if (h >= 0 && h < 24) {
+					const arr = timedMap.get(h) ?? [];
+					arr.push(tf);
+					timedMap.set(h, arr);
+					continue;
+				}
+			}
+			untimedArr.push(tf);
+		}
+		dayUntimedReminders = untimedArr;
+		dayTimedReminders = timedMap;
+	}
+
+	/** Week-view reminders split by day key, then timed vs untimed. */
+	let weekDayUntimedReminders: Map<string, TFile[]> = new Map();
+	let weekDayTimedReminders: Map<string, Map<number, TFile[]>> = new Map();
+
+	$: {
+		void metaVersion;
+		void remindersByDay;
+		const um = new Map<string, TFile[]>();
+		const tm = new Map<string, Map<number, TFile[]>>();
+		for (const [dk, files] of remindersByDay) {
+			const untimedArr: TFile[] = [];
+			const timedMap = new Map<number, TFile[]>();
+			for (const tf of files) {
+				const r = plugin.reminderService.getReminder(tf);
+				if (r?.time && /^\d{1,2}:\d{2}$/.test(r.time)) {
+					const h = parseInt(r.time.split(":")[0], 10);
+					if (h >= 0 && h < 24) {
+						const arr = timedMap.get(h) ?? [];
+						arr.push(tf);
+						timedMap.set(h, arr);
+						continue;
+					}
+				}
+				untimedArr.push(tf);
+			}
+			um.set(dk, untimedArr);
+			tm.set(dk, timedMap);
+		}
+		weekDayUntimedReminders = um;
+		weekDayTimedReminders = tm;
+	}
+
+	/** Deduplicated list of all reminder files in the current range (for year-view bar). */
+	$: yearViewReminders = (() => {
+		const seen = new Set<string>();
+		const files: TFile[] = [];
+		for (const arr of remindersByDay.values()) {
+			for (const f of arr) {
+				if (!seen.has(f.path)) { seen.add(f.path); files.push(f); }
+			}
+		}
+		return files;
+	})();
+
 	/** Day-view targets that have no startTime -- shown in the header bar as all-day chips. */
 	let dayUntimedTargets: TFile[] = [];
 	/** Day-view targets keyed by start hour (from startTime frontmatter). */
@@ -617,11 +698,15 @@
 		const endTime = `${String((hour + 1) % 24).padStart(2, "0")}:00`;
 
 		try {
-			await plugin.targetDateService.setTargetDate(file, date, "day");
-			await plugin.app.fileManager.processFrontMatter(file, (fm) => {
-				fm["startTime"] = startTime;
-				fm["endTime"] = endTime;
-			});
+			if (payload?.type === "reminder") {
+				await plugin.reminderService.setReminder(file, date.format("YYYY-MM-DD"), startTime);
+			} else {
+				await plugin.targetDateService.setTargetDate(file, date, "day");
+				await plugin.app.fileManager.processFrontMatter(file, (fm) => {
+					fm["startTime"] = startTime;
+					fm["endTime"] = endTime;
+				});
+			}
 		} catch (err) {
 			console.error("[time-tools] Failed to set time slot:", err);
 			new Notice(`Failed to set time: ${err instanceof Error ? err.message : String(err)}`);
@@ -654,7 +739,9 @@
 		const file = abstract;
 
 		try {
-			if (payload?.type === "inline" && payload.line !== undefined) {
+			if (payload?.type === "reminder") {
+				await plugin.reminderService.setReminder(file, date.format("YYYY-MM-DD"), undefined);
+			} else if (payload?.type === "inline" && payload.line !== undefined) {
 				await addInlineTargetTag(file, payload.line, date, gran);
 			} else {
 				await plugin.targetDateService.setTargetDate(file, date, gran);
@@ -1256,7 +1343,7 @@
 				</div>
 			{/if}
 
-			<!-- "all-day" bar — day-granularity targets with no time -->
+			<!-- "all-day" bar — day-granularity targets with no time + reminders -->
 			<!-- svelte-ignore a11y-no-static-element-interactions -->
 			<div
 				class="tm-cal-period-bar"
@@ -1267,6 +1354,27 @@
 				on:contextmenu={(e) => showNewNoteMenu(e, anchor, "day")}
 			>
 				<span class="tm-cal-period-bar-label">this day</span>
+				{#if dayUntimedReminders.length > 0}
+					<div class="tm-cal-period-bar-chips">
+						{#each dayUntimedReminders as tf (tf.path)}
+							<div class="tm-cal-reminder-chip-cal" title="Reminder: {tf.basename} — drag to reschedule">
+								<Icon name="alarm-clock" size={11} />
+								<!-- svelte-ignore a11y-no-static-element-interactions -->
+								<span
+									class="tm-cal-reminder-chip-cal-name"
+									draggable={true}
+									on:click={() => void plugin.app.workspace.getLeaf(false).openFile(tf)}
+									on:dragstart={(e) => {
+										setDragPayload({ type: "reminder", filePath: tf.path });
+										if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", tf.path); }
+									}}
+									on:dragend={() => setDragPayload(null)}
+								>{tf.basename}</span>
+								<button class="tm-cal-reminder-chip-remove" draggable={false} on:click={(e) => { e.stopPropagation(); void plugin.reminderService.clearReminder(tf); }} aria-label="Clear reminder">×</button>
+							</div>
+						{/each}
+					</div>
+				{/if}
 				{#if showTargetFiles && dayUntimedTargets.length > 0}
 					<div class="tm-cal-period-bar-chips">
 						{#each dayUntimedTargets as tf (tf.path)}
@@ -1320,6 +1428,7 @@
 				{#each HOURS as hour (hour)}
 					{@const hourEvts = eventsForHour(hour)}
 					{@const hourChips = showTargetFiles ? (dayTimedTargets.get(hour) ?? []) : []}
+					{@const hourReminders = dayTimedReminders.get(hour) ?? []}
 					<!-- svelte-ignore a11y-no-static-element-interactions -->
 					<div
 						class="tm-cal-day-slot"
@@ -1368,6 +1477,23 @@
 										on:click={(e) => void clearTimeSlot(e, tf)}
 										aria-label="Remove target date for {tf.basename}"
 									>×</button>
+								</div>
+							{/each}
+							{#each hourReminders as tf (tf.path)}
+								<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+									<Icon name="alarm-clock" size={11} />
+									<!-- svelte-ignore a11y-no-static-element-interactions -->
+									<span
+										class="tm-cal-reminder-chip-cal-name"
+										draggable={true}
+										on:click={() => void plugin.app.workspace.getLeaf(false).openFile(tf)}
+										on:dragstart={(e) => {
+											setDragPayload({ type: "reminder", filePath: tf.path });
+											if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", tf.path); }
+										}}
+										on:dragend={() => setDragPayload(null)}
+									>{tf.basename}</span>
+									<button class="tm-cal-reminder-chip-remove" draggable={false} on:click={(e) => { e.stopPropagation(); void plugin.reminderService.clearReminder(tf); }} aria-label="Clear reminder">×</button>
 								</div>
 							{/each}
 						</div>
@@ -1498,6 +1624,25 @@
 							></span>
 						{/if}
 
+						<!-- Reminder chips -->
+						{#each remindersByDay.get(dk) ?? [] as tf (tf.path)}
+							<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+								<Icon name="alarm-clock" size={11} />
+								<!-- svelte-ignore a11y-no-static-element-interactions -->
+								<span
+									class="tm-cal-reminder-chip-cal-name"
+									draggable={true}
+									on:click={() => void plugin.app.workspace.getLeaf(false).openFile(tf)}
+									on:dragstart={(e) => {
+										setDragPayload({ type: "reminder", filePath: tf.path });
+										if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", tf.path); }
+									}}
+									on:dragend={() => setDragPayload(null)}
+								>{tf.basename}</span>
+								<button class="tm-cal-reminder-chip-remove" draggable={false} on:click={(e) => { e.stopPropagation(); void plugin.reminderService.clearReminder(tf); }} aria-label="Clear reminder">×</button>
+							</div>
+						{/each}
+
 						<!-- Target date chips -->
 						{#if targets.length > 0}
 							<div class="tm-cal-target-chips">
@@ -1616,27 +1761,18 @@
 						on:click={() => void openDay(day)}
 						title="{day.format('MMM D')} — {exists ? 'open' : 'create'} note"
 					>{day.date()}</button>
-					{#if dayEnabled}
-						<button
-							class="tm-cal-week-header-note-btn"
-							class:tm-cal-week-header-note-btn--exists={exists}
-							on:click={() => void openDay(day)}
-							title="{exists ? 'Open' : 'Create'} daily note for {day.format('MMM D')}"
-						>
-							<Icon name={exists ? "file-text" : "file-plus"} size={11} />
-						</button>
-					{/if}
 				</div>
 			{/each}
 		</div>
 
-		<!-- All-day row: calendar events + untimed day targets -->
+		<!-- All-day row: calendar events + untimed day targets + reminders -->
 		<div class="tm-cal-week-allday-row">
 			<div class="tm-cal-week-time-gutter tm-cal-week-time-gutter--label">all day</div>
 			{#each weekDays as day (dayKey(day))}
 				{@const dk = dayKey(day)}
 				{@const adEvts = (visibleEventsByDay.get(dk) ?? []).filter(e => e.allDay)}
 				{@const targets = showTargetFiles ? (weekDayUntimedTargets.get(dk) ?? []) : []}
+				{@const reminders = weekDayUntimedReminders.get(dk) ?? []}
 				<!-- svelte-ignore a11y-no-static-element-interactions -->
 				<div
 					class="tm-cal-week-allday-cell"
@@ -1666,6 +1802,23 @@
 							<button class="tm-cal-target-chip-remove" on:click={(e) => void clearTargetDate(e, tf)} aria-label="Remove">×</button>
 						</div>
 					{/each}
+					{#each reminders as tf (tf.path)}
+						<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+							<Icon name="alarm-clock" size={11} />
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<span
+								class="tm-cal-reminder-chip-cal-name"
+								draggable={true}
+								on:click={() => void plugin.app.workspace.getLeaf(false).openFile(tf)}
+								on:dragstart={(e) => {
+									setDragPayload({ type: "reminder", filePath: tf.path });
+									if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", tf.path); }
+								}}
+								on:dragend={() => setDragPayload(null)}
+							>{tf.basename}</span>
+							<button class="tm-cal-reminder-chip-remove" draggable={false} on:click={(e) => { e.stopPropagation(); void plugin.reminderService.clearReminder(tf); }} aria-label="Clear reminder">×</button>
+						</div>
+					{/each}
 				</div>
 			{/each}
 		</div>
@@ -1682,6 +1835,7 @@
 					{@const isCurrent = today && moment().hour() === hour}
 					{@const hourEvts = (visibleEventsByDay.get(dk) ?? []).filter(e => !e.allDay && e.start.hour() === hour)}
 					{@const hourChips = showTargetFiles ? (weekDayTimedTargets.get(dk)?.get(hour) ?? []) : []}
+					{@const hourReminders = weekDayTimedReminders.get(dk)?.get(hour) ?? []}
 					<!-- svelte-ignore a11y-no-static-element-interactions -->
 					<div
 						class="tm-cal-week-hour-cell"
@@ -1730,6 +1884,23 @@
 								>×</button>
 							</div>
 						{/each}
+						{#each hourReminders as tf (tf.path)}
+							<div class="tm-cal-reminder-chip-cal tm-cal-reminder-chip-cal--block" title="Reminder: {tf.basename} — drag to reschedule">
+								<Icon name="alarm-clock" size={11} />
+								<!-- svelte-ignore a11y-no-static-element-interactions -->
+								<span
+									class="tm-cal-reminder-chip-cal-name"
+									draggable={true}
+									on:click={() => void plugin.app.workspace.getLeaf(false).openFile(tf)}
+									on:dragstart={(e) => {
+										setDragPayload({ type: "reminder", filePath: tf.path });
+										if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", tf.path); }
+									}}
+									on:dragend={() => setDragPayload(null)}
+								>{tf.basename}</span>
+								<button class="tm-cal-reminder-chip-remove" draggable={false} on:click={(e) => { e.stopPropagation(); void plugin.reminderService.clearReminder(tf); }} aria-label="Clear reminder">×</button>
+							</div>
+						{/each}
 					</div>
 				{/each}
 			{/each}
@@ -1750,6 +1921,27 @@
 			on:contextmenu={(e) => showNewNoteMenu(e, anchor, "year")}
 		>
 			<span class="tm-cal-period-bar-label">this year</span>
+			{#if yearViewReminders.length > 0}
+				<div class="tm-cal-period-bar-chips">
+					{#each yearViewReminders as tf (tf.path)}
+						<div class="tm-cal-reminder-chip-cal" title="Reminder: {tf.basename} — drag to reschedule">
+							<Icon name="alarm-clock" size={11} />
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<span
+								class="tm-cal-reminder-chip-cal-name"
+								draggable={true}
+								on:click={() => void plugin.app.workspace.getLeaf(false).openFile(tf)}
+								on:dragstart={(e) => {
+									setDragPayload({ type: "reminder", filePath: tf.path });
+									if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", tf.path); }
+								}}
+								on:dragend={() => setDragPayload(null)}
+							>{tf.basename}</span>
+							<button class="tm-cal-reminder-chip-remove" draggable={false} on:click={(e) => { e.stopPropagation(); void plugin.reminderService.clearReminder(tf); }} aria-label="Clear reminder">×</button>
+						</div>
+					{/each}
+				</div>
+			{/if}
 			{#if yearViewTargets.length > 0}
 				<div class="tm-cal-period-bar-chips">
 					{#each yearViewTargets as tf (tf.path)}
@@ -2728,6 +2920,16 @@
 		border-color: var(--interactive-accent);
 	}
 
+	.tm-cal-reminder-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+		background: var(--color-orange, #f5a623);
+		border: 1.5px solid var(--color-orange, #f5a623);
+		cursor: default;
+	}
+
 	/* Event bars */
 	.tm-cal-event-bars {
 		display: flex;
@@ -3247,6 +3449,47 @@
 	.tm-cal-day-slot-chip {
 		align-self: flex-start;
 	}
+
+	/* Reminder chip in calendar views */
+	.tm-cal-reminder-chip-cal {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+		padding: 1px 4px;
+		border-radius: var(--radius-s);
+		font-size: var(--font-ui-smaller);
+		color: var(--interactive-accent);
+		background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+		overflow: hidden;
+		white-space: nowrap;
+		align-self: flex-start;
+	}
+	.tm-cal-reminder-chip-cal:hover {
+		background: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	}
+	.tm-cal-reminder-chip-cal-icon { flex-shrink: 0; }
+	.tm-cal-reminder-chip-cal-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		flex: 1;
+		min-width: 0;
+		cursor: grab;
+		user-select: none;
+	}
+	.tm-cal-reminder-chip-cal--block {
+		width: 100%;
+		box-sizing: border-box;
+	}
+	.tm-cal-reminder-chip-remove {
+		all: unset;
+		cursor: pointer;
+		flex-shrink: 0;
+		font-size: 11px;
+		line-height: 1;
+		opacity: 0.5;
+		padding: 0 1px;
+	}
+	.tm-cal-reminder-chip-remove:hover { opacity: 1; }
 
 	/* Full-width block chip — used inside month day cells, week all-day cells, week hour cells */
 	.tm-cal-target-chip--block {

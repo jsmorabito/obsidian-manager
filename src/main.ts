@@ -48,6 +48,8 @@ import { TIME_MANAGER_INBOX_VIEW, InboxView } from "./inbox/view";
 import { registerInboxCommands, addInboxFileMenuItem } from "./inbox/commands";
 import { InboxService } from "./editor/InboxService";
 import { TargetDateService } from "./target-date/target-date-service";
+import { ReminderService } from "./reminders/ReminderService";
+import { ReminderChipManager } from "./reminders/ReminderChipManager";
 import { CHAIN_VIEW_TYPE, ChainView, QuickAddFileModal } from "./tasks/chainView";
 import { NewTaskModal } from "./tasks/newTaskModal";
 import { ChainSuggestModal } from "./tasks/chainSuggestModal";
@@ -219,6 +221,8 @@ export default class ManagerPlugin extends Plugin {
 	calendarService!: CalendarService;
 	inboxService!: InboxService;
 	targetDateService!: TargetDateService;
+	reminderService!: ReminderService;
+	reminderChipManager!: ReminderChipManager;
 	dateSuggest!: DateSuggest;
 	private _registeredWithObjects: unknown = null;
 	private editorRibbon: HTMLElement | null = null;
@@ -249,6 +253,8 @@ export default class ManagerPlugin extends Plugin {
 		registerPeriodicIcons();
 		this.inboxService = new InboxService(this.app);
 		this.targetDateService = new TargetDateService(this.app);
+		this.reminderService = new ReminderService(this.app);
+		this.reminderChipManager = new ReminderChipManager(this.app, this.reminderService);
 		this.calendarService = new CalendarService(this);
 		this.sessionManager = new SessionManager(this);
 
@@ -291,15 +297,29 @@ export default class ManagerPlugin extends Plugin {
 			callback: () => this.openRecentlyViewedPanel(),
 		});
 
-		this.registerEvent(this.app.workspace.on("file-open", (file) => { if (file instanceof TFile) this.trackRecentFile(file); }));
+		this.registerEvent(this.app.workspace.on("file-open", (file) => {
+			if (file instanceof TFile) this.trackRecentFile(file);
+			this.refreshReminderChip();
+		}));
+		this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+			this.refreshReminderChip();
+		}));
 		this.applyBodyClasses();
 		this.configureRibbons();
 		addInboxFileMenuItem(this);
-		this.registerEvent(this.app.metadataCache.on("changed", () => this.refreshAgendaViews()));
+		this.registerEvent(this.app.metadataCache.on("changed", (changedFile) => {
+			this.refreshAgendaViews();
+			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (view?.file && changedFile.path === view.file.path) {
+				this.refreshReminderChip();
+			}
+		}));
+		this.app.workspace.onLayoutReady(() => this.refreshReminderChip());
 		registerFileMenuHandlers(this);
 		this.registerInterval(window.setInterval(this.checkDayChange.bind(this), 1000 * 60 * 15));
 		this.registerEvent(this.app.workspace.on("layout-change", () => this._registerObjectsTrigger()));
 		this.registerInterval(window.setInterval(() => this.refreshInboxView(), 1000 * 60));
+		this.registerInterval(window.setInterval(() => this.checkReminders(), 1000 * 60));
 
 		// ── Task-tools ───────────────────────────────────────────────────────
 		addIcon("linear-logo", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 96 320 320" fill="none"><path fill="currentColor" d="M357.358 374.306c1.758 1.758 4.581 1.866 6.416.189a163.595 163.595 0 0 0 5.316-5.081c62.547-62.547 62.547-163.956 0-226.504-62.548-62.547-163.957-62.547-226.504 0a163.595 163.595 0 0 0-5.081 5.316c-1.677 1.835-1.569 4.658.189 6.416l219.664 219.664Z"/><path fill="currentColor" d="M336.333 394.672c2.627-1.528 3.024-5.118.875-7.267L124.595 174.792c-2.149-2.149-5.739-1.752-7.267.875a158.87 158.87 0 0 0-7.119 13.725c-.811 1.771-.41 3.852.968 5.229l206.201 206.202c1.378 1.378 3.459 1.779 5.23.968a158.87 158.87 0 0 0 13.725-7.119Z"/><path fill="currentColor" d="M286.659 413.348c3.619-.707 4.86-5.136 2.253-7.743L106.395 223.088c-2.607-2.607-7.036-1.366-7.743 2.253a160.813 160.813 0 0 0-2.502 18.462 4.666 4.666 0 0 0 1.366 3.654l167.027 167.027a4.667 4.667 0 0 0 3.654 1.366 160.834 160.834 0 0 0 18.462-2.502Z"/><path fill="currentColor" d="M217.031 411.577c4.45 1.107 7.201-4.155 3.959-7.398L107.821 291.01c-3.243-3.242-8.504-.491-7.398 3.959 6.784 27.279 20.838 53.121 42.163 74.445 21.324 21.324 47.166 35.379 74.445 42.163Z"/></svg>`);
@@ -760,6 +780,24 @@ export default class ManagerPlugin extends Plugin {
 	refreshInboxView(): void {
 		for (const leaf of this.app.workspace.getLeavesOfType(TIME_MANAGER_INBOX_VIEW)) {
 			if (leaf.view instanceof InboxView) leaf.view.render();
+		}
+	}
+
+	private refreshReminderChip(): void {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		this.reminderChipManager.update(view?.file ?? null, view?.leaf ?? null);
+	}
+
+	private checkReminders(): void {
+		const due = this.reminderService.getDueReminders(new Date());
+		for (const { file, date, time } of due) {
+			const when = time ? `${date} at ${time}` : date;
+			const notice = new Notice(`🔔 Reminder: ${file.basename}\n${when}`, 0);
+			notice.noticeEl.addEventListener("click", () => {
+				void this.app.workspace.getLeaf(false).openFile(file);
+				notice.hide();
+			});
+			void this.reminderService.clearReminder(file);
 		}
 	}
 

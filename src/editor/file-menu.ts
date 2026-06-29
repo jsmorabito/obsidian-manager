@@ -13,6 +13,7 @@ import { addHalfYears } from "../periodic/half-year";
 import { TIME_MANAGER_EDITOR_VIEW, DailyNoteView } from "./view";
 import { TargetDateModal } from "../target-date/TargetDateModal";
 import { TIME_MANAGER_CALENDAR_VIEW, CalendarView } from "../calendar/CalendarView";
+import { ReminderModal } from "../reminders/ReminderModal";
 
 export function registerFileMenuHandlers(plugin: TimeManagerPlugin): void {
 	plugin.registerEvent(
@@ -33,6 +34,7 @@ function handleFileItem(plugin: TimeManagerPlugin, menu: Menu, file: TFile): voi
 
 	// Every markdown file gets a target-date option.
 	addTargetDateMenuItem(plugin, menu, file);
+	addReminderMenuItem(plugin, menu, file);
 	addShowInCalendarMenuItem(plugin, menu, file);
 
 	if (!meta) {
@@ -149,6 +151,35 @@ function addShowInCalendarMenuItem(
 			})();
 		});
 	});
+}
+
+// ── Reminder ─────────────────────────────────────────────────────────────────
+
+function addReminderMenuItem(
+	plugin: TimeManagerPlugin,
+	menu: Menu,
+	file: TFile
+): void {
+	const existing = plugin.reminderService.getReminder(file);
+	const label = existing ? "Change reminder" : "Remind me";
+
+	menu.addItem((item) => {
+		item.setTitle(label);
+		item.setIcon("bell");
+		item.onClick(() => {
+			new ReminderModal(plugin.app, (date, time) => {
+				void plugin.reminderService.setReminder(file, date, time);
+			}).open();
+		});
+	});
+
+	if (existing) {
+		menu.addItem((item) => {
+			item.setTitle("Clear reminder");
+			item.setIcon("bell-off");
+			item.onClick(() => void plugin.reminderService.clearReminder(file));
+		});
+	}
 }
 
 // ── Target date ──────────────────────────────────────────────────────────────

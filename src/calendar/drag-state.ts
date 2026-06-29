@@ -5,8 +5,8 @@
  */
 
 export interface DragPayload {
-	/** "file" = whole-file item; "inline" = a single tagged line inside a file. */
-	type: "file" | "inline";
+	/** "file" = whole-file item; "inline" = a single tagged line inside a file; "reminder" = reminder chip. */
+	type: "file" | "inline" | "reminder";
 	/** Vault-relative path of the source file. */
 	filePath: string;
 	/** For inline items: 0-based line number of the tag. */
