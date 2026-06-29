@@ -17,6 +17,8 @@ export interface CalendarSource {
 	/** CSS color string (e.g. "#4A90D9") or empty string for the default accent. */
 	color: string;
 	enabled: boolean;
+	/** Whether this source's events are shown in the calendar UI (filter panel toggle). Defaults to true. */
+	visible: boolean;
 }
 
 // ── Calendar event ─────────────────────────────────────────────────────────────

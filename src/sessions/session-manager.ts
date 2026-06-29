@@ -145,7 +145,7 @@ export class SessionManager {
 	// ── Helpers ───────────────────────────────────────────────────────────────
 
 	private sessionsFolder(): string {
-		return normalizePath(this.plugin.settings.time.time.sessionsFolder || "Sessions");
+		return normalizePath(this.plugin.settings.time.sessionsFolder || "Sessions");
 	}
 
 	private getFile(path: string): TFile | null {

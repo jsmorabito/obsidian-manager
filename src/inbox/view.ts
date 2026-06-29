@@ -64,9 +64,9 @@ export class InboxView extends ItemView {
 		left.createEl("span", { text: "Inbox", cls: "tm-inbox-title" });
 
 		const allItems = this.inboxService.getInboxItems(
-			this.plugin.settings.time.time.inboxTags,
-			this.plugin.settings.time.time.inboxExcludeTags,
-			this.plugin.settings.time.time.inboxAutoRemoveDone,
+			this.plugin.settings.time.inboxTags,
+			this.plugin.settings.time.inboxExcludeTags,
+			this.plugin.settings.time.inboxAutoRemoveDone,
 		);
 		const unreadCount = allItems.filter((i) => !this.isRead(i)).length;
 		if (unreadCount > 0) {
@@ -77,15 +77,15 @@ export class InboxView extends ItemView {
 
 		const displayBtn = right.createEl("button", { cls: "tm-inbox-icon-btn", attr: { "aria-label": "Display options" } });
 		setIcon(displayBtn, "sliders-horizontal");
-		if (this.plugin.settings.time.time.inboxDisplay.sortOrder !== "newest") {
+		if (this.plugin.settings.time.inboxDisplay.sortOrder !== "newest") {
 			displayBtn.addClass("tm-inbox-btn-active");
 		}
 		displayBtn.addEventListener("click", (e) => { e.stopPropagation(); this.openDisplayPanel(displayBtn); });
 
-		if (this.plugin.settings.time.time.inboxTags.length > 1) {
+		if (this.plugin.settings.time.inboxTags.length > 1) {
 			const filterBtn = right.createEl("button", { cls: "tm-inbox-icon-btn", attr: { "aria-label": "Filter" } });
 			setIcon(filterBtn, "filter");
-			if (this.plugin.settings.time.time.inboxDisplay.inboxTagFilter) {
+			if (this.plugin.settings.time.inboxDisplay.inboxTagFilter) {
 				filterBtn.addClass("tm-inbox-btn-active");
 			}
 			filterBtn.addEventListener("click", (e) => { e.stopPropagation(); this.openFilterPanel(filterBtn); });
@@ -95,8 +95,8 @@ export class InboxView extends ItemView {
 	// ── Body ──────────────────────────────────────────────────────────────────
 
 	private renderBody(container: HTMLElement): void {
-		const activeTags = this.plugin.settings.time.time.inboxDisplay.inboxTagFilter ?? this.plugin.settings.time.time.inboxTags;
-		const items = this.inboxService.getInboxItems(activeTags, this.plugin.settings.time.time.inboxExcludeTags, this.plugin.settings.time.time.inboxAutoRemoveDone);
+		const activeTags = this.plugin.settings.time.inboxDisplay.inboxTagFilter ?? this.plugin.settings.time.inboxTags;
+		const items = this.inboxService.getInboxItems(activeTags, this.plugin.settings.time.inboxExcludeTags, this.plugin.settings.time.inboxAutoRemoveDone);
 
 		if (items.length === 0) {
 			this.renderEmpty(container);
@@ -110,7 +110,7 @@ export class InboxView extends ItemView {
 	}
 
 	private sortItems(items: TaggedInboxItem[]): TaggedInboxItem[] {
-		const order = this.plugin.settings.time.time.inboxDisplay.sortOrder;
+		const order = this.plugin.settings.time.inboxDisplay.sortOrder;
 		return [...items].sort((a, b) => {
 			switch (order) {
 				case "oldest": return a.file.stat.mtime - b.file.stat.mtime;
@@ -139,13 +139,13 @@ export class InboxView extends ItemView {
 	}
 
 	private isRead(item: TaggedInboxItem): boolean {
-		return this.plugin.settings.time.time.readTaggedItems.includes(this.itemKey(item));
+		return this.plugin.settings.time.readTaggedItems.includes(this.itemKey(item));
 	}
 
 	private async markRead(item: TaggedInboxItem): Promise<void> {
 		const key = this.itemKey(item);
-		if (!this.plugin.settings.time.time.readTaggedItems.includes(key)) {
-			this.plugin.settings.time.time.readTaggedItems.push(key);
+		if (!this.plugin.settings.time.readTaggedItems.includes(key)) {
+			this.plugin.settings.time.readTaggedItems.push(key);
 			await this.plugin.saveSettings();
 		}
 	}
@@ -218,7 +218,7 @@ export class InboxView extends ItemView {
 			mi.onClick(async () => {
 				if (isRead) {
 					const key = this.itemKey(item);
-					this.plugin.settings.time.time.readTaggedItems = this.plugin.settings.time.time.readTaggedItems.filter((k) => k !== key);
+					this.plugin.settings.time.readTaggedItems = this.plugin.settings.time.readTaggedItems.filter((k) => k !== key);
 					await this.plugin.saveSettings();
 				} else {
 					await this.markRead(item);
@@ -245,7 +245,7 @@ export class InboxView extends ItemView {
 				if (item.type === "inline") {
 					await this.inboxService.clearInlineItem(item);
 				} else {
-					await this.inboxService.clearFileItem(item, this.plugin.settings.time.time.inboxTags);
+					await this.inboxService.clearFileItem(item, this.plugin.settings.time.inboxTags);
 				}
 				this.render();
 			});
@@ -259,7 +259,7 @@ export class InboxView extends ItemView {
 	private openDisplayPanel(anchor: HTMLElement): void {
 		this.closePopover();
 
-		const display = this.plugin.settings.time.time.inboxDisplay;
+		const display = this.plugin.settings.time.inboxDisplay;
 		const panel = this.contentEl.createEl("div", { cls: "tm-inbox-popover tm-inbox-display-panel" });
 		this.positionPopover(panel, anchor);
 		this.activePopover = panel;
@@ -290,8 +290,8 @@ export class InboxView extends ItemView {
 	private openFilterPanel(anchor: HTMLElement): void {
 		this.closePopover();
 
-		const configuredTags = this.plugin.settings.time.time.inboxTags;
-		const display = this.plugin.settings.time.time.inboxDisplay;
+		const configuredTags = this.plugin.settings.time.inboxTags;
+		const display = this.plugin.settings.time.inboxDisplay;
 		const panel = this.contentEl.createEl("div", { cls: "tm-inbox-popover tm-inbox-filter-panel" });
 		this.positionPopover(panel, anchor);
 		this.activePopover = panel;

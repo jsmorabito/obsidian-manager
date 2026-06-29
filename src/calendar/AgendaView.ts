@@ -220,7 +220,7 @@ export class AgendaView extends ItemView {
 		const agenda = contentEl.createDiv({ cls: "tm-pnp-agenda" });
 
 		// ── Calendar events ───────────────────────────────────────────────────
-		const sources = this.plugin.settings.time.time.calendarSources.filter((s) => s.enabled);
+		const sources = this.plugin.settings.time.calendarSources.filter((s) => s.enabled);
 
 		if (sources.length === 0) {
 			agenda.createEl("p", {
@@ -268,7 +268,7 @@ export class AgendaView extends ItemView {
 		periodStart: ReturnType<typeof moment>,
 		periodEnd: ReturnType<typeof moment>
 	): void {
-		const mode = this.plugin.settings.time.time.agendaWorkSection;
+		const mode = this.plugin.settings.time.agendaWorkSection;
 
 		// Tab bar
 		const tabs = container.createDiv({ cls: "tm-pnp-work-tabs" });
@@ -286,7 +286,7 @@ export class AgendaView extends ItemView {
 		const body = container.createDiv({ cls: "tm-pnp-work-body" });
 
 		const switchTo = (newMode: "tasks" | "targets") => {
-			this.plugin.settings.time.time.agendaWorkSection = newMode;
+			this.plugin.settings.time.agendaWorkSection = newMode;
 			void this.plugin.saveSettings();
 			tasksTab.className   = newMode === "tasks"   ? "tm-pnp-work-tab tm-pnp-work-tab--active" : "tm-pnp-work-tab";
 			targetsTab.className = newMode === "targets" ? "tm-pnp-work-tab tm-pnp-work-tab--active" : "tm-pnp-work-tab";

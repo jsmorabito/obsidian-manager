@@ -42,7 +42,7 @@
 		if (file instanceof TFile) {
 			title = file.basename;
 			if (selectionMode === "daily") {
-				const fmt = plugin.settings[granularity]?.format ?? DEFAULT_FORMAT[granularity];
+				const fmt = plugin.settings.time[granularity]?.format ?? DEFAULT_FORMAT[granularity];
 				({ primary: displayPrimary, secondary: displaySecondary } = getPeriodicDisplay(title, fmt, granularity));
 			} else {
 				displayPrimary = title;

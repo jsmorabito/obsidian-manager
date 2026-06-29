@@ -129,7 +129,7 @@ export class LinearView extends ItemView {
 		setTooltip(settingsBtn, "Linear settings", { delay: 0 });
 		settingsBtn.addEventListener("click", () => {
 			(this.app as { setting?: { open?: () => void; openTabById?: (id: string) => void } }).setting?.open?.();
-			(this.app as { setting?: { open?: () => void; openTabById?: (id: string) => void } }).setting?.openTabById?.("obsidian-task-tools");
+			(this.app as { setting?: { open?: () => void; openTabById?: (id: string) => void } }).setting?.openTabById?.("obsidian-manager");
 		});
 	}
 

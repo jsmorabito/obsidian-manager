@@ -55,7 +55,7 @@ export class DailyNoteView extends ItemView {
 	/** Called by the plugin after settings are saved to push the updated enabled-granularities list into the toolbar. */
 	refreshSettings() {
 		const enabled = granularities.filter(
-			(g) => g === "day" || this.plugin.settings[g].enabled
+			(g) => g === "day" || this.plugin.settings.time[g].enabled
 		);
 		this.view?.$set({ enabledGranularities: enabled });
 	}
@@ -277,7 +277,7 @@ export class DailyNoteView extends ItemView {
 		// Presets menu.
 		this.addAction("bookmark", "Select preset", (e) => {
 			const menu = new Menu();
-			const presets = this.plugin.settings.time.time.presets;
+			const presets = this.plugin.settings.time.presets;
 			if (presets.length === 0) {
 				menu.addItem((item) => {
 					item.setTitle("No presets saved");

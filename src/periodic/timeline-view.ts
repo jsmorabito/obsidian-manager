@@ -137,7 +137,7 @@ export class TimelineView extends ItemView {
 		}
 
 		// ── Calendar events ────────────────────────────────────────────────────
-		const sources = this.plugin.settings.time.time.calendarSources.filter((s) => s.enabled);
+		const sources = this.plugin.settings.time.calendarSources.filter((s) => s.enabled);
 		if (sources.length > 0) {
 			this.renderEventsSection(contentEl, referenceDate);
 		}

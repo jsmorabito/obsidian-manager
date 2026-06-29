@@ -20,7 +20,7 @@ import { addHalfYears } from "./half-year";
 export function registerPeriodicCommands(plugin: TimeManagerPlugin): void {
 	for (const granularity of granularities) {
 		const config = displayConfigs[granularity];
-		if (!plugin.settings[granularity].enabled) continue;
+		if (!plugin.settings.time[granularity].enabled) continue;
 
 		plugin.addCommand({
 			id: `open-${config.periodicity}-note`,

@@ -45,11 +45,14 @@
 
 	// -- Helpers ---------------------------------------------------------------
 
-	function getTaskTools(): TaskToolsPlugin | null {
-		const appAny = plugin.app as App & {
-			plugins?: { plugins?: Record<string, unknown> };
+	function getTaskTools(): TaskToolsPlugin {
+		return {
+			settings: plugin.settings.tasks,
+			findCurrentTask: (chain) => plugin.findCurrentTask(chain),
+			buildChain: (file, chain) => plugin.buildChain(file, chain),
+			openFileRespectingPin: (file) => plugin.openFileRespectingPin(file),
+			advanceChain: (chain, file) => plugin.advanceChain(chain, file),
 		};
-		return (appAny.plugins?.plugins?.["obsidian-task-tools"] as TaskToolsPlugin) ?? null;
 	}
 
 	// -- State -----------------------------------------------------------------
@@ -62,7 +65,6 @@
 	}
 
 	let sections: ChainSection[] = [];
-	let notInstalled = false;
 	// Track which detail item is active per chain (by chain idKey)
 	let activeDetail: Map<string, number> = new Map();
 
@@ -70,8 +72,6 @@
 
 	function load(): void {
 		const tt = getTaskTools();
-		if (!tt) { notInstalled = true; return; }
-		notInstalled = false;
 
 		sections = tt.settings.chains.map((chain) => {
 			const currentFile = tt.findCurrentTask(chain);
@@ -96,18 +96,11 @@
 	// -- Actions ---------------------------------------------------------------
 
 	async function openItem(item: ChainItem): Promise<void> {
-		const tt = getTaskTools();
-		if (tt) {
-			await tt.openFileRespectingPin(item.file);
-		} else {
-			await plugin.app.workspace.getLeaf(false).openFile(item.file);
-		}
+		await getTaskTools().openFileRespectingPin(item.file);
 	}
 
 	async function advance(chain: ChainDefinition, file: TFile): Promise<void> {
-		const tt = getTaskTools();
-		if (!tt) return;
-		await tt.advanceChain(chain, file);
+		await getTaskTools().advanceChain(chain, file);
 		load();
 	}
 
@@ -138,12 +131,7 @@
 	</div>
 
 	<div class="tm-cal-chains-panel-body">
-		{#if notInstalled}
-			<div class="tm-cal-chains-empty">
-				<Icon name="link" size={18} />
-				<span>Task Tools plugin not installed</span>
-			</div>
-		{:else if sections.length === 0}
+		{#if sections.length === 0}
 			<div class="tm-cal-chains-empty">
 				<Icon name="link" size={18} />
 				<span>No chains defined</span>

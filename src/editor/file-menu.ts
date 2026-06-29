@@ -12,6 +12,7 @@ import { displayConfigs } from "../periodic/types";
 import { addHalfYears } from "../periodic/half-year";
 import { TIME_MANAGER_EDITOR_VIEW, DailyNoteView } from "./view";
 import { TargetDateModal } from "../target-date/TargetDateModal";
+import { TIME_MANAGER_CALENDAR_VIEW, CalendarView } from "../calendar/CalendarView";
 
 export function registerFileMenuHandlers(plugin: TimeManagerPlugin): void {
 	plugin.registerEvent(
@@ -32,6 +33,7 @@ function handleFileItem(plugin: TimeManagerPlugin, menu: Menu, file: TFile): voi
 
 	// Every markdown file gets a target-date option.
 	addTargetDateMenuItem(plugin, menu, file);
+	addShowInCalendarMenuItem(plugin, menu, file);
 
 	if (!meta) {
 		// Non-periodic files: just add the agenda view shortcut.
@@ -106,6 +108,44 @@ function handleFolderItem(
 				await leaf.setViewState({ type: TIME_MANAGER_EDITOR_VIEW });
 				void workspace.revealLeaf(leaf);
 				(leaf.view as DailyNoteView).setSelectionMode("folder", folderPath);
+			})();
+		});
+	});
+}
+
+// ── Show in calendar ─────────────────────────────────────────────────────────
+
+function addShowInCalendarMenuItem(
+	plugin: TimeManagerPlugin,
+	menu: Menu,
+	file: TFile
+): void {
+	const td = plugin.targetDateService.getTargetDate(file);
+	const fm = plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+	const hasTime = !!fm?.startTime || !!fm?.targetDate;
+
+	if (!td && !hasTime) return;
+
+	const dateStr = td
+		? moment(td.raw).format("YYYY-MM-DD")
+		: moment(fm!.targetDate as string).format("YYYY-MM-DD");
+
+	menu.addItem((item) => {
+		item.setTitle("Show in calendar");
+		item.setIcon("calendar-search");
+		item.onClick(() => {
+			void (async () => {
+				const { workspace } = plugin.app;
+				const existing = workspace.getLeavesOfType(TIME_MANAGER_CALENDAR_VIEW);
+				let leaf = existing[0];
+				if (!leaf) {
+					leaf = workspace.getLeaf(true);
+					await leaf.setViewState({ type: TIME_MANAGER_CALENDAR_VIEW });
+				}
+				workspace.revealLeaf(leaf);
+				if (leaf.view instanceof CalendarView) {
+					leaf.view.navigateToDate(dateStr);
+				}
 			})();
 		});
 	});

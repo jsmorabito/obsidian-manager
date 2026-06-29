@@ -117,6 +117,8 @@ export interface TimeManagerSettings {
 
 	// Calendar integration
 	calendarSources: CalendarSource[];
+	/** Whether files with target dates are shown in the calendar UI. */
+	showTargetFiles: boolean;
 
 	// Inbox
 	inboxDisplay: InboxDisplayOptions;
@@ -205,6 +207,7 @@ export const DEFAULT_SETTINGS: TimeManagerSettings = {
 	migratedFromDailyNotes: false,
 	nlDates: DEFAULT_NLDATES_SETTINGS,
 	calendarSources: [],
+	showTargetFiles: true,
 	inboxDisplay: DEFAULT_INBOX_DISPLAY,
 	inboxTags: ["inbox"],
 	inboxExcludeTags: [],
@@ -252,7 +255,7 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 	// Dot-notation support for nested settings (e.g. "nlDates.isAutosuggestEnabled", "day.folder").
 	getControlValue(key: string): unknown {
 		const parts = key.split(".");
-		let val: unknown = this.plugin.settings;
+		let val: unknown = this.plugin.settings.time;
 		for (const part of parts) {
 			val = (val as Record<string, unknown>)[part];
 		}
@@ -261,7 +264,7 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 
 	async setControlValue(key: string, value: unknown): Promise<void> {
 		const parts = key.split(".");
-		let obj = this.plugin.settings as unknown as Record<string, unknown>;
+		let obj = this.plugin.settings.time as unknown as Record<string, unknown>;
 		for (let i = 0; i < parts.length - 1; i++) {
 			obj = obj[parts[i]] as Record<string, unknown>;
 		}
@@ -270,7 +273,7 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 	}
 
 	getSettingDefinitions(): SettingDefinitionItem[] {
-		const s = this.plugin.settings;
+		const s = this.plugin.settings.time;
 
 		return [
 			// ── Startup (main tab) ───────────────────────────────────────────
@@ -514,7 +517,7 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 	}
 
 	private periodicNotePage(g: Granularity): SettingDefinitionPage {
-		const config = this.plugin.settings[g];
+		const config = this.plugin.settings.time[g];
 		const label = displayConfigs[g].periodicity;
 		const caps = label.charAt(0).toUpperCase() + label.slice(1);
 		const example = PERIOD_FORMAT_EXAMPLES[g];
@@ -1290,6 +1293,7 @@ export class AddCalendarSourceModal extends Modal {
 						value: this.value,
 						color: this.color,
 						enabled: true,
+						visible: true,
 					};
 					this.plugin.settings.time.calendarSources.push(source);
 					await this.plugin.saveSettings();

@@ -95,7 +95,7 @@ export class CalendarService {
 		rangeStart: Moment,
 		rangeEnd: Moment
 	): Promise<CalendarEvent[]> {
-		const sources = this.plugin.settings.time.time.calendarSources.filter((s) => s.enabled);
+		const sources = this.plugin.settings.time.calendarSources.filter((s) => s.enabled);
 		const batches = await Promise.all(
 			sources.map((s) => this.getEventsForSource(s, rangeStart, rangeEnd))
 		);

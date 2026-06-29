@@ -644,7 +644,7 @@
 	// ── Enabled granularities (toolbar prop) ──────────────────────────────────
 
 	export let enabledGranularities: Granularity[] = granularities.filter(
-		(g) => g === "day" || plugin.settings[g].enabled
+		(g) => g === "day" || plugin.settings.time[g].enabled
 	);
 
 	// ── Scroll helpers ────────────────────────────────────────────────────────

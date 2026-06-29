@@ -50,7 +50,7 @@ export class RecentlyViewedView extends ItemView {
 		titleRow.createEl("span", { text: "Recently Viewed", cls: "rv-title" });
 		titleRow
 			.createEl("span", { cls: "rv-badge" })
-			.setText(String(this.plugin.settings.time.time.recentFiles.length));
+			.setText(String(this.plugin.settings.time.recentFiles.length));
 
 		const clearBtn = header.createEl("button", {
 			cls: "rv-clear-btn",
@@ -59,7 +59,7 @@ export class RecentlyViewedView extends ItemView {
 		setIcon(clearBtn, "trash-2");
 		clearBtn.addEventListener("click", () => {
 			void (async () => {
-				this.plugin.settings.time.time.recentFiles = [];
+				this.plugin.settings.time.recentFiles = [];
 				await this.plugin.saveSettings();
 				this.render();
 			})();
@@ -67,7 +67,7 @@ export class RecentlyViewedView extends ItemView {
 
 		// ── List ────────────────────────────────────────────────────────────────
 		const list = container.createEl("div", { cls: "rv-list" });
-		const files = this.plugin.settings.time.time.recentFiles;
+		const files = this.plugin.settings.time.recentFiles;
 
 		if (files.length === 0) {
 			const empty = list.createEl("div", { cls: "rv-empty" });
@@ -109,7 +109,7 @@ export class RecentlyViewedView extends ItemView {
 				(entry.extension && entry.extension !== "md" ? "." + entry.extension : "");
 			info.createEl("div", { cls: "rv-name", text: displayName });
 
-			if (this.plugin.settings.time.time.rvShowPath) {
+			if (this.plugin.settings.time.rvShowPath) {
 				const folder = entry.path.includes("/")
 					? entry.path.substring(0, entry.path.lastIndexOf("/"))
 					: "/";
@@ -117,7 +117,7 @@ export class RecentlyViewedView extends ItemView {
 			}
 
 			// Timestamp
-			if (this.plugin.settings.time.time.rvShowTimestamp) {
+			if (this.plugin.settings.time.rvShowTimestamp) {
 				item.createEl("div", {
 					cls: "rv-time",
 					text: formatRelativeTime(entry.viewedAt),

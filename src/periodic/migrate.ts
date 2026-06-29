@@ -100,10 +100,10 @@ class MigrationModal extends Modal {
 					.setButtonText("Import")
 					.setCta()
 					.onClick(async () => {
-						if (this.core.format)   this.plugin.settings.time.time.day.format       = this.core.format;
-						if (this.core.folder)   this.plugin.settings.time.time.day.folder       = this.core.folder;
-						if (this.core.template) this.plugin.settings.time.time.day.templatePath = this.core.template;
-						this.plugin.settings.time.time.migratedFromDailyNotes = true;
+						if (this.core.format)   this.plugin.settings.time.day.format       = this.core.format;
+						if (this.core.folder)   this.plugin.settings.time.day.folder       = this.core.folder;
+						if (this.core.template) this.plugin.settings.time.day.templatePath = this.core.template;
+						this.plugin.settings.time.migratedFromDailyNotes = true;
 						await this.plugin.saveSettings();
 						// eslint-disable-next-line obsidianmd/ui/sentence-case
 						new Notice("Obsidian Time Tools: Daily Notes settings imported.");
@@ -112,7 +112,7 @@ class MigrationModal extends Modal {
 			)
 			.addButton((btn) =>
 				btn.setButtonText("Skip").onClick(async () => {
-					this.plugin.settings.time.time.migratedFromDailyNotes = true;
+					this.plugin.settings.time.migratedFromDailyNotes = true;
 					await this.plugin.saveSettings();
 					this.close();
 				})

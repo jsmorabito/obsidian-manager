@@ -17,7 +17,7 @@ export const TIME_MANAGER_CALENDAR_VIEW = "obsidian-time-tools-calendar-view";
 
 /** Svelte instance API — exported functions aren't reflected in generated .d.ts */
 interface CalendarGridInstance {
-	getViewType(): "day" | "week" | "month" | "year" | "horizon";
+	getViewType(): "day" | "week" | "month" | "year" | "horizon" | "agenda";
 	getAnchorDate(): string;
 	refresh(): void;
 	$set(props: Record<string, unknown>): void;
@@ -44,7 +44,7 @@ export class CalendarView extends ItemView {
 		if (titleEl) titleEl.textContent = t;
 	};
 
-	private _makeGrid(target: HTMLElement, viewType: "day" | "week" | "month" | "year" | "horizon", anchorDate: string): CalendarGridInstance {
+	private _makeGrid(target: HTMLElement, viewType: "day" | "week" | "month" | "year" | "horizon" | "agenda", anchorDate: string): CalendarGridInstance {
 		return new CalendarGrid({
 			target,
 			props: { plugin: this.plugin, viewType, anchorDate, onTitleChange: this._onTitleChange },
@@ -71,6 +71,14 @@ export class CalendarView extends ItemView {
 		this.grid?.refresh();
 	}
 
+	/** Switch to day view anchored at the given date. */
+	navigateToDate(date: string): void {
+		if (this.grid) {
+			this.grid.$set({ viewType: "day", anchorDate: date });
+			this.grid.refresh();
+		}
+	}
+
 	getState(): Record<string, unknown> {
 		return {
 			...super.getState(),
@@ -82,7 +90,7 @@ export class CalendarView extends ItemView {
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
 		await super.setState(state, result);
 		const s = state as Record<string, unknown>;
-		const vt = (s?.viewType  as "month" | "week" | "day" | "year" | "horizon") ?? "month";
+		const vt = (s?.viewType  as "month" | "week" | "day" | "year" | "horizon" | "agenda") ?? "month";
 		const ad = (s?.anchorDate as string) ?? moment().format("YYYY-MM-DD");
 		if (this.grid) {
 			// $set may be a no-op if the values haven't changed (e.g. onOpen already

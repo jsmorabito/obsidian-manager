@@ -8,9 +8,9 @@
 	 * Year view:  4x3 mini-month grid with note dots and today highlight.
 	 */
 
-	import { onDestroy } from "svelte";
+	import { onDestroy, tick } from "svelte";
 	import { Menu, moment, Notice, TFile } from "obsidian";
-	import { TemplateSuggestModal, ExistingNoteSuggestModal } from "./CalendarNoteModal";
+	import { TemplateSuggestModal, ExistingNoteSuggestModal, NoteNameModal } from "./CalendarNoteModal";
 	import type TimeManagerPlugin from "../main";
 	import type { CalendarEvent } from "./types";
 	import type { TargetGranularity } from "../target-date/types";
@@ -29,16 +29,106 @@
 
 	export let plugin: TimeManagerPlugin;
 	/** "day" | "week" | "month" | "year" -- persisted via CalendarView getState/setState */
-	export let viewType: "day" | "week" | "month" | "year" | "horizon" = "month";
+	export let viewType: "day" | "week" | "month" | "year" | "horizon" | "agenda" = "month";
 	/** ISO date string (YYYY-MM-DD) used as the anchor for the visible range */
 	export let anchorDate: string = moment().format("YYYY-MM-DD");
 	/** Called whenever the period label changes so CalendarView can update the pane header. */
 	export let onTitleChange: ((t: string) => void) | undefined = undefined;
 	// -- Internal state --------------------------------------------------------
 
-	let showTargetPanel = false;
-	let showInboxPanel  = false;
-	let showChainsPanel = false;
+	let showTargetPanel  = false;
+	let showInboxPanel   = false;
+	let showChainsPanel  = false;
+	let showFilterPanel  = false;
+
+	// -- List panel state -------------------------------------------------------
+	let showListPanel = false;
+	let listPanelBefore = 30;
+	let listPanelAfter  = 90;
+	let listPanelScrollEl: HTMLElement | null = null;
+	let listPanelEventsByDay: Map<string, import("./types").CalendarEvent[]> = new Map();
+	let listPanelDayTargets: Map<string, TFile[]> = new Map();
+	let listPanelFetchGen = 0;
+
+	$: listPanelRangeStart = anchor.clone().subtract(listPanelBefore, "day").startOf("day");
+	$: listPanelRangeEnd   = anchor.clone().add(listPanelAfter, "day").endOf("day");
+
+	// Reactive target files for the list panel (day-granularity only, same metaVersion dep)
+	$: {
+		void metaVersion;
+		if (showListPanel) {
+			const items = plugin.targetDateService.getFilesWithTargetInRange(listPanelRangeStart, listPanelRangeEnd);
+			const dm = new Map<string, TFile[]>();
+			for (const { file, target } of items) {
+				if (target.granularity === "day") {
+					const arr = dm.get(target.raw) ?? [];
+					arr.push(file);
+					dm.set(target.raw, arr);
+				}
+			}
+			listPanelDayTargets = dm;
+		}
+	}
+
+	$: if (showListPanel) void fetchListPanelEvents(anchorDate, listPanelBefore, listPanelAfter);
+
+	async function fetchListPanelEvents(ad: string, before: number, after: number): Promise<void> {
+		if (!plugin.settings.time.calendarSources?.some(s => s.enabled)) return;
+		const gen = ++listPanelFetchGen;
+		const a = moment(ad, "YYYY-MM-DD");
+		const s = a.clone().subtract(before, "day").startOf("day");
+		const e = a.clone().add(after, "day").endOf("day");
+		try {
+			const result = await plugin.calendarService.getEventsForRange(s, e);
+			if (gen !== listPanelFetchGen) return;
+			listPanelEventsByDay = result;
+		} catch (err) {
+			if (gen !== listPanelFetchGen) return;
+			console.error("[time-tools] ListPanel:", err);
+		}
+	}
+
+	$: listPanelAllDays = showListPanel
+		? Array.from({ length: listPanelBefore + listPanelAfter + 1 }, (_, i) =>
+			anchor.clone().subtract(listPanelBefore - i, "day"))
+		: ([] as ReturnType<typeof moment>[]);
+
+	$: listPanelDaysWithContent = listPanelAllDays.filter(d => {
+		const dk = dayKey(d);
+		return (listPanelEventsByDay.get(dk) ?? []).length > 0 || (listPanelDayTargets.get(dk) ?? []).length > 0;
+	});
+
+	// Scroll to today/anchor when the panel opens
+	$: if (showListPanel) {
+		tick().then(() => {
+			listPanelScrollEl?.querySelector<HTMLElement>(`#lp-day-${anchorDate}`)?.scrollIntoView({ block: "start" });
+		});
+	}
+
+	function listPanelTopSentinel(node: HTMLElement) {
+		const observer = new IntersectionObserver(async entries => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) {
+					const prevH = listPanelScrollEl?.scrollHeight ?? 0;
+					listPanelBefore += 30;
+					await tick();
+					if (listPanelScrollEl) listPanelScrollEl.scrollTop += listPanelScrollEl.scrollHeight - prevH;
+				}
+			}
+		}, { rootMargin: "200px" });
+		observer.observe(node);
+		return { destroy() { observer.disconnect(); } };
+	}
+
+	function listPanelBottomSentinel(node: HTMLElement) {
+		const observer = new IntersectionObserver(entries => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) listPanelAfter += 30;
+			}
+		}, { rootMargin: "200px" });
+		observer.observe(node);
+		return { destroy() { observer.disconnect(); } };
+	}
 
 	// -- Drag state ------------------------------------------------------------
 
@@ -191,6 +281,7 @@
 
 	let eventsByDay: Map<string, CalendarEvent[]> = new Map();
 	let loading = false;
+	let hasLoadedOnce = false;
 
 	// Day-of-week header labels (Mon-first, ISO weeks)
 	const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -199,7 +290,7 @@
 
 	// -- Exported accessors for state persistence ------------------------------
 
-	export function getViewType(): "day" | "week" | "month" | "year" | "horizon" { return viewType; }
+	export function getViewType(): "day" | "week" | "month" | "year" | "horizon" | "agenda" { return viewType; }
 	export function getAnchorDate(): string { return anchorDate; }
 	/** Called by CalendarView.setState after every $set to guarantee a fetch fires. */
 	export function refresh(): void { void fetchEvents(anchorDate, viewType); }
@@ -213,6 +304,7 @@
 	         : viewType === "week"    ? `Week ${anchor.isoWeek()} - ${anchor.format("YYYY")}`
 	         : viewType === "day"     ? anchor.format("ddd, MMM D, YYYY")
 	         : viewType === "horizon" ? "Horizon"
+	         : viewType === "agenda"  ? `Agenda · ${anchor.format("MMM D")} – ${anchor.clone().add(29, "day").format("MMM D, YYYY")}`
 	         :                          anchor.format("YYYY");
 
 	$: onTitleChange?.(title);
@@ -221,21 +313,41 @@
 	$: weekDays    = buildWeekDays(anchor);
 	$: yearMonths  = buildYearMonths(anchor);
 
-	$: rangeStart = viewType === "month" ? anchor.clone().startOf("month").startOf("isoWeek")
-	              : viewType === "week"  ? anchor.clone().startOf("isoWeek")
-	              : viewType === "day"   ? anchor.clone().startOf("day")
-	              :                        anchor.clone().startOf("year");
-	$: rangeEnd = viewType === "month" ? anchor.clone().endOf("month").endOf("isoWeek")
-	            : viewType === "week"  ? anchor.clone().endOf("isoWeek")
-	            : viewType === "day"   ? anchor.clone().endOf("day")
-	            :                        anchor.clone().endOf("year");
+	$: rangeStart = viewType === "month"  ? anchor.clone().startOf("month").startOf("isoWeek")
+	              : viewType === "week"   ? anchor.clone().startOf("isoWeek")
+	              : viewType === "day"    ? anchor.clone().startOf("day")
+	              : viewType === "agenda" ? anchor.clone().startOf("day")
+	              :                         anchor.clone().startOf("year");
+	$: rangeEnd = viewType === "month"  ? anchor.clone().endOf("month").endOf("isoWeek")
+	            : viewType === "week"   ? anchor.clone().endOf("isoWeek")
+	            : viewType === "day"    ? anchor.clone().endOf("day")
+	            : viewType === "agenda" ? anchor.clone().add(29, "day").endOf("day")
+	            :                         anchor.clone().endOf("year");
 
 	$: gridColumns = weekEnabled
 		? "32px repeat(7, 1fr)"
 		: "repeat(7, 1fr)";
 
+	// IDs of calendar sources currently set to visible (reactive to settings changes)
+	$: visibleSourceIds = new Set(
+		plugin.settings.time.calendarSources
+			.filter(s => s.visible !== false)
+			.map(s => s.id)
+	);
+	$: showTargetFiles = plugin.settings.time.showTargetFiles !== false;
+
+	// eventsByDay filtered to only visible sources
+	$: visibleEventsByDay = (() => {
+		const m = new Map<string, import("./types").CalendarEvent[]>();
+		for (const [k, evts] of eventsByDay) {
+			const filtered = evts.filter(e => visibleSourceIds.has(e.sourceId));
+			if (filtered.length > 0) m.set(k, filtered);
+		}
+		return m;
+	})();
+
 	// Day view -- split events into all-day and timed
-	$: dayAllEvents   = eventsByDay.get(dayKey(anchor)) ?? [];
+	$: dayAllEvents   = visibleEventsByDay.get(dayKey(anchor)) ?? [];
 	$: dayAllDayEvts  = dayAllEvents.filter(e => e.allDay);
 	$: dayTimedEvts   = dayAllEvents.filter(e => !e.allDay);
 
@@ -257,14 +369,16 @@
 		const gen = ++fetchGen;
 
 		const a = moment(ad, "YYYY-MM-DD");
-		const start = vt === "month" ? a.clone().startOf("month").startOf("isoWeek")
-		            : vt === "week"  ? a.clone().startOf("isoWeek")
-		            : vt === "day"   ? a.clone().startOf("day")
-		            :                  a.clone().startOf("year");
-		const end   = vt === "month" ? a.clone().endOf("month").endOf("isoWeek")
-		            : vt === "week"  ? a.clone().endOf("isoWeek")
-		            : vt === "day"   ? a.clone().endOf("day")
-		            :                  a.clone().endOf("year");
+		const start = vt === "month"  ? a.clone().startOf("month").startOf("isoWeek")
+		            : vt === "week"   ? a.clone().startOf("isoWeek")
+		            : vt === "day"    ? a.clone().startOf("day")
+		            : vt === "agenda" ? a.clone().startOf("day")
+		            :                   a.clone().startOf("year");
+		const end   = vt === "month"  ? a.clone().endOf("month").endOf("isoWeek")
+		            : vt === "week"   ? a.clone().endOf("isoWeek")
+		            : vt === "day"    ? a.clone().endOf("day")
+		            : vt === "agenda" ? a.clone().add(29, "day").endOf("day")
+		            :                   a.clone().endOf("year");
 
 		loading = true;
 		try {
@@ -272,6 +386,7 @@
 			// Drop stale results from an earlier fetch that resolved out of order.
 			if (gen !== fetchGen) return;
 			eventsByDay = result;
+			hasLoadedOnce = true;
 		} catch (e) {
 			if (gen !== fetchGen) return;
 			console.error("[time-tools] CalendarGrid:", e);
@@ -311,7 +426,7 @@
 	function isCurrentMonth(d: ReturnType<typeof moment>): boolean { return d.isSame(anchor, "month"); }
 
 	function eventsForDay(d: ReturnType<typeof moment>): CalendarEvent[] {
-		return eventsByDay.get(dayKey(d)) ?? [];
+		return visibleEventsByDay.get(dayKey(d)) ?? [];
 	}
 
 	function noteExistsForDay(d: ReturnType<typeof moment>): boolean {
@@ -358,8 +473,10 @@
 		           : viewType === "week"    ? "week"  as const
 		           : viewType === "day"     ? "day"   as const
 		           : viewType === "horizon" ? "day"   as const
+		           : viewType === "agenda"  ? "day"   as const
 		           :                          "year"  as const;
-		anchorDate = anchor.clone().add(dir, unit).format("YYYY-MM-DD");
+		const amount = viewType === "agenda" ? dir * 30 : dir;
+		anchorDate = anchor.clone().add(amount, unit).format("YYYY-MM-DD");
 	}
 
 	function goToday(): void {
@@ -387,7 +504,7 @@
 	$: horizonBands = ((): HorizonBand[] => {
 		const ordered: Granularity[] = ["year", "half-year", "quarter", "month", "week", "day"];
 		return ordered
-			.filter(g => plugin.settings[g]?.enabled)
+			.filter(g => plugin.settings.time[g]?.enabled)
 			.map(gran => {
 				let targets: TFile[];
 				let periodLabel: string;
@@ -439,7 +556,7 @@
 			});
 	})();
 
-	function switchView(v: "day" | "week" | "month" | "year" | "horizon"): void {
+	function switchView(v: "day" | "week" | "month" | "year" | "horizon" | "agenda"): void {
 		viewType = v;
 	}
 
@@ -578,12 +695,13 @@
 		date: ReturnType<typeof moment>,
 		gran: TargetGranularity,
 		hour?: number,
-		templateContent?: string
+		templateContent?: string,
+		nameOverride?: string
 	): Promise<void> {
 		const app = plugin.app;
 		const dateStr = formatTargetDate(date, gran);
 		const timeStr = hour !== undefined ? ` ${String(hour).padStart(2, "0")}00` : "";
-		const baseName = dateStr + timeStr;
+		const baseName = nameOverride ?? (dateStr + timeStr);
 
 		let path = `${baseName}.md`;
 		let counter = 1;
@@ -639,7 +757,12 @@
 				.onClick(() => {
 					new TemplateSuggestModal(plugin.app, (templateFile) => {
 						void plugin.app.vault.cachedRead(templateFile).then((content) => {
-							void createNoteAt(date, gran, hour, content);
+							const dateStr = formatTargetDate(date, gran);
+							const timeStr = hour !== undefined ? ` ${String(hour).padStart(2, "0")}00` : "";
+							const defaultName = dateStr + timeStr;
+							new NoteNameModal(plugin.app, defaultName, (name) => {
+								void createNoteAt(date, gran, hour, content, name);
+							}).open();
 						});
 					}).open();
 				});
@@ -789,15 +912,30 @@
 	<div class="tm-cal-header">
 		<!-- Left: panel toggles (title is in the Obsidian pane header) -->
 		<div class="tm-cal-header-left">
-			{#if loading}
-				<span class="tm-cal-loading">…</span>
-			{/if}
-			<!-- Panel toggle button group -->
+				<!-- Panel toggle button group -->
 			<div class="tm-cal-panel-btns">
 				<button
 					class="tm-cal-panel-btn"
+					class:tm-cal-panel-btn--active={showFilterPanel}
+					on:click={() => { showFilterPanel = !showFilterPanel; if (showFilterPanel) { showListPanel = false; showInboxPanel = false; showTargetPanel = false; showChainsPanel = false; } }}
+					title="{showFilterPanel ? 'Hide' : 'Show'} filter panel"
+					aria-label="Toggle filter panel"
+				>
+					<Icon name="sliders-horizontal" size={15} />
+				</button>
+				<button
+					class="tm-cal-panel-btn"
+					class:tm-cal-panel-btn--active={showListPanel}
+					on:click={() => { showListPanel = !showListPanel; if (showListPanel) { showFilterPanel = false; showInboxPanel = false; showTargetPanel = false; showChainsPanel = false; } }}
+					title="{showListPanel ? 'Hide' : 'Show'} list panel"
+					aria-label="Toggle list panel"
+				>
+					<Icon name="list" size={15} />
+				</button>
+				<button
+					class="tm-cal-panel-btn"
 					class:tm-cal-panel-btn--active={showInboxPanel}
-					on:click={() => { showInboxPanel = !showInboxPanel; if (showInboxPanel) { showTargetPanel = false; showChainsPanel = false; } }}
+					on:click={() => { showInboxPanel = !showInboxPanel; if (showInboxPanel) { showListPanel = false; showTargetPanel = false; showChainsPanel = false; } }}
 					title="{showInboxPanel ? 'Hide' : 'Show'} inbox panel"
 					aria-label="Toggle calendar inbox panel"
 				>
@@ -806,7 +944,7 @@
 				<button
 					class="tm-cal-panel-btn"
 					class:tm-cal-panel-btn--active={showChainsPanel}
-					on:click={() => { showChainsPanel = !showChainsPanel; if (showChainsPanel) { showInboxPanel = false; showTargetPanel = false; } }}
+					on:click={() => { showChainsPanel = !showChainsPanel; if (showChainsPanel) { showListPanel = false; showInboxPanel = false; showTargetPanel = false; } }}
 					title="{showChainsPanel ? 'Hide' : 'Show'} chains panel"
 					aria-label="Toggle chains panel"
 				>
@@ -815,7 +953,7 @@
 				<button
 					class="tm-cal-panel-btn"
 					class:tm-cal-panel-btn--active={showTargetPanel}
-					on:click={() => { showTargetPanel = !showTargetPanel; if (showTargetPanel) { showInboxPanel = false; showChainsPanel = false; } }}
+					on:click={() => { showTargetPanel = !showTargetPanel; if (showTargetPanel) { showListPanel = false; showInboxPanel = false; showChainsPanel = false; } }}
 					title="{showTargetPanel ? 'Hide' : 'Show'} target dates panel"
 					aria-label="Toggle targets panel"
 				>
@@ -853,6 +991,12 @@
 					on:click={() => switchView("horizon")}
 					title="Horizon — all granularities stacked"
 				>Horizon</button>
+				<button
+					class="tm-cal-view-btn"
+					class:tm-cal-view-btn--active={viewType === "agenda"}
+					on:click={() => switchView("agenda")}
+					title="Agenda — upcoming events and files"
+				>Agenda</button>
 			</div>
 		</div>
 
@@ -876,7 +1020,147 @@
 
 	<!-- ── Body (panel + calendar) ────────────────────────────────────────── -->
 	<div class="tm-cal-body">
-	{#if showInboxPanel}
+	{#if showFilterPanel}
+		<!-- Filter panel -->
+		<div class="tm-cal-filter-panel">
+			<!-- Files with target dates -->
+			<div class="tm-cal-filter-section">
+				<div class="tm-cal-filter-section-title">Files</div>
+				<!-- svelte-ignore a11y-no-static-element-interactions -->
+				<div
+					class="tm-cal-filter-row"
+					on:click={async () => {
+						plugin.settings.time.showTargetFiles = !plugin.settings.time.showTargetFiles;
+						await plugin.saveSettings();
+					}}
+					role="button"
+					tabindex="0"
+					on:keydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); plugin.settings.time.showTargetFiles = !plugin.settings.time.showTargetFiles; void plugin.saveSettings(); } }}
+				>
+					<div
+						class="tm-cal-filter-check"
+						class:tm-cal-filter-check--on={plugin.settings.time.showTargetFiles !== false}
+						style="background: var(--interactive-accent); border-color: var(--interactive-accent);"
+					>
+						{#if plugin.settings.time.showTargetFiles !== false}
+							<Icon name="check" size={10} />
+						{/if}
+					</div>
+					<span class="tm-cal-filter-label">Files with target dates</span>
+				</div>
+			</div>
+
+			<!-- Calendar sources -->
+			{#if plugin.settings.time.calendarSources.filter(s => s.enabled).length > 0}
+				<div class="tm-cal-filter-section">
+					<div class="tm-cal-filter-section-title">Calendars</div>
+					{#each plugin.settings.time.calendarSources.filter(s => s.enabled) as source (source.id)}
+						{@const color = source.color || "var(--interactive-accent)"}
+						{@const isOn = source.visible !== false}
+						<!-- svelte-ignore a11y-no-static-element-interactions -->
+						<div
+							class="tm-cal-filter-row"
+							on:click={async () => {
+								source.visible = !isOn;
+								await plugin.saveSettings();
+								// Force Svelte to see the mutation
+								plugin.settings.time.calendarSources = [...plugin.settings.time.calendarSources];
+							}}
+							role="button"
+							tabindex="0"
+							on:keydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); source.visible = !isOn; void plugin.saveSettings(); plugin.settings.time.calendarSources = [...plugin.settings.time.calendarSources]; } }}
+						>
+							<div
+								class="tm-cal-filter-check"
+								class:tm-cal-filter-check--on={isOn}
+								style={isOn ? `background:${color};border-color:${color}` : `border-color:${color}`}
+							>
+								{#if isOn}<Icon name="check" size={10} />{/if}
+							</div>
+							<span class="tm-cal-filter-label">{source.name}</span>
+						</div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{:else if showListPanel}
+		<!-- List panel — infinitely scrollable day list, independent of main granularity -->
+		<div class="tm-cal-list-panel" bind:this={listPanelScrollEl}>
+			<div use:listPanelTopSentinel></div>
+			{#if listPanelDaysWithContent.length === 0}
+				<div class="tm-cal-list-empty">No events or scheduled files in this period.</div>
+			{:else}
+				{#each listPanelDaysWithContent as day (dayKey(day))}
+					{@const dk = dayKey(day)}
+					{@const lpEvts = (listPanelEventsByDay.get(dk) ?? []).filter(e => visibleSourceIds.has(e.sourceId))}
+					{@const lpTargets = showTargetFiles ? (listPanelDayTargets.get(dk) ?? []) : []}
+					{@const today = isToday(day)}
+					<div class="tm-cal-list-day" class:tm-cal-list-day--today={today} id="lp-day-{dk}">
+						<div class="tm-cal-list-day-header">
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<div
+								class="tm-cal-list-day-label"
+								class:tm-cal-list-day-label--today={today}
+								on:click={() => { anchorDate = dk; viewType = "day"; }}
+								role="button"
+								tabindex="0"
+								on:keydown={(e) => { if (e.key === "Enter") { anchorDate = dk; viewType = "day"; } }}
+								title="Go to {day.format('MMM D')} in day view"
+							>
+								<span class="tm-cal-list-day-dow">{day.format("ddd")}</span>
+								<span class="tm-cal-list-day-num" class:tm-cal-list-day-num--today={today}>{day.format("D")}</span>
+								<span class="tm-cal-list-day-month">{day.format("MMM YYYY")}</span>
+								{#if today}<span class="tm-cal-list-today-chip">Today</span>{/if}
+							</div>
+							{#if dayEnabled}
+								{@const dn = noteExistsForDay(day)}
+								<button
+									class="tm-cal-list-note-btn"
+									class:tm-cal-list-note-btn--exists={dn}
+									on:click={() => void openDay(day)}
+									title="{dn ? 'Open' : 'Create'} daily note"
+								><Icon name={dn ? "file-text" : "file-plus"} size={12} /></button>
+							{/if}
+						</div>
+						<div class="tm-cal-list-day-body">
+							{#each lpEvts as evt (evt.uid)}
+								{@const timeText = evt.allDay ? "All day" : evt.end ? `${evt.start.format("h:mm")}–${evt.end.format("h:mm a")}` : evt.start.format("h:mm a")}
+								<div
+									class="tm-cal-list-evt"
+									style={evt.sourceColor ? `border-left-color:${evt.sourceColor}` : ""}
+									title={evt.summary}
+								>
+									<span class="tm-cal-list-evt-time">{timeText}</span>
+									<span class="tm-cal-list-evt-title">{evt.summary}</span>
+								</div>
+							{/each}
+							{#each lpTargets as tf (tf.path)}
+								{@const _lp = getFileStatus(tf)}
+								<!-- svelte-ignore a11y-no-static-element-interactions -->
+								<div class="tm-cal-target-chip" title="{tf.basename}" on:contextmenu={(e) => showChipMenu(e, tf)}>
+									{#if _lp}<button class="tm-cal-target-chip-status" title={_lp} on:click={(e) => void cycleStatus(e, tf)}>{@html statusSvg(_lp)}</button>{/if}
+									<span
+										class="tm-cal-target-chip-name"
+										draggable={true}
+										on:dragstart={(e) => { setDragPayload({ type: "file", filePath: tf.path }); if (e.dataTransfer) { e.dataTransfer.effectAllowed = "copy"; e.dataTransfer.setData("text/plain", tf.path); } }}
+										on:dragend={() => setDragPayload(null)}
+										on:dblclick={(e) => previewChip(e, tf)}
+									>{tf.basename}</span>
+									<button
+										class="tm-cal-target-chip-remove"
+										draggable={false}
+										on:click={(e) => void clearTargetDate(e, tf)}
+										aria-label="Remove target date from {tf.basename}"
+									>×</button>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/each}
+			{/if}
+			<div use:listPanelBottomSentinel></div>
+		</div>
+	{:else if showInboxPanel}
 		<CalendarInboxPanel {plugin} />
 	{:else if showChainsPanel}
 		<CalendarChainsPanel {plugin} />
@@ -885,6 +1169,62 @@
 	{/if}
 
 	<div class="tm-cal-content">
+
+	<!-- ── Loading states ─────────────────────────────────────────────────── -->
+	{#if loading && !hasLoadedOnce}
+		<!-- Skeleton: first load — no data yet, show shimmer placeholders -->
+		<div class="tm-cal-skeleton">
+			{#if viewType === "day"}
+				<!-- Day skeleton: time gutter + event blobs -->
+				<div class="tm-cal-skeleton-day">
+					{#each [3, 7, 9, 11, 14, 16, 19] as h}
+						<div class="tm-cal-skeleton-slot">
+							<div class="tm-cal-skeleton-time shimmer"></div>
+							{#if [7, 11, 16].includes(h)}
+								<div class="tm-cal-skeleton-evt shimmer" style="width:{[55,72,40][([7,11,16].indexOf(h))]}%"></div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else if viewType === "week"}
+				<div class="tm-cal-skeleton-week">
+					{#each Array(7) as _, ci}
+						<div class="tm-cal-skeleton-col">
+							{#each Array(3) as _, ri}
+								{#if (ci + ri) % 3 === 0}
+									<div class="tm-cal-skeleton-evt shimmer" style="width:85%;margin-top:{ri * 60 + 40}px"></div>
+								{/if}
+							{/each}
+						</div>
+					{/each}
+				</div>
+			{:else if viewType === "month"}
+				<div class="tm-cal-skeleton-month">
+					{#each Array(35) as _, i}
+						<div class="tm-cal-skeleton-cell">
+							<div class="tm-cal-skeleton-cell-num shimmer"></div>
+							{#if [2,5,8,11,15,20,23,27,30].includes(i)}
+								<div class="tm-cal-skeleton-cell-bar shimmer"></div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<!-- Generic skeleton for year/horizon/agenda -->
+				<div class="tm-cal-skeleton-generic">
+					{#each [80, 55, 90, 40, 70] as w}
+						<div class="tm-cal-skeleton-line shimmer" style="width:{w}%"></div>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{:else if loading && hasLoadedOnce}
+		<!-- Re-fetch: data already visible, show a thin top progress bar -->
+		<div class="tm-cal-progress-bar">
+			<div class="tm-cal-progress-bar-fill"></div>
+		</div>
+	{/if}
+
 	<!-- ── Day view ────────────────────────────────────────────────────────── -->
 	{#if viewType === "day"}
 		{@const dayExists = noteExistsForDay(anchor)}
@@ -927,7 +1267,7 @@
 				on:contextmenu={(e) => showNewNoteMenu(e, anchor, "day")}
 			>
 				<span class="tm-cal-period-bar-label">this day</span>
-				{#if dayUntimedTargets.length > 0}
+				{#if showTargetFiles && dayUntimedTargets.length > 0}
 					<div class="tm-cal-period-bar-chips">
 						{#each dayUntimedTargets as tf (tf.path)}
 							{@const _ds = getFileStatus(tf)}
@@ -979,7 +1319,7 @@
 			<div class="tm-cal-day-slots">
 				{#each HOURS as hour (hour)}
 					{@const hourEvts = eventsForHour(hour)}
-					{@const hourChips = dayTimedTargets.get(hour) ?? []}
+					{@const hourChips = showTargetFiles ? (dayTimedTargets.get(hour) ?? []) : []}
 					<!-- svelte-ignore a11y-no-static-element-interactions -->
 					<div
 						class="tm-cal-day-slot"
@@ -1129,8 +1469,8 @@
 				<!-- Day cells -->
 				{#each week as day (dayKey(day))}
 					{@const dk = dayKey(day)}
-					{@const events = eventsByDay.get(dk) ?? []}
-					{@const targets = dayTargets.get(dk) ?? []}
+					{@const events = visibleEventsByDay.get(dk) ?? []}
+					{@const targets = showTargetFiles ? (dayTargets.get(dk) ?? []) : []}
 					{@const exists = noteExistsForDay(day)}
 					{@const today  = isToday(day)}
 					{@const inMonth = isCurrentMonth(day)}
@@ -1295,8 +1635,8 @@
 			<div class="tm-cal-week-time-gutter tm-cal-week-time-gutter--label">all day</div>
 			{#each weekDays as day (dayKey(day))}
 				{@const dk = dayKey(day)}
-				{@const adEvts = (eventsByDay.get(dk) ?? []).filter(e => e.allDay)}
-				{@const targets = weekDayUntimedTargets.get(dk) ?? []}
+				{@const adEvts = (visibleEventsByDay.get(dk) ?? []).filter(e => e.allDay)}
+				{@const targets = showTargetFiles ? (weekDayUntimedTargets.get(dk) ?? []) : []}
 				<!-- svelte-ignore a11y-no-static-element-interactions -->
 				<div
 					class="tm-cal-week-allday-cell"
@@ -1340,8 +1680,8 @@
 					{@const dk = dayKey(day)}
 					{@const today = isToday(day)}
 					{@const isCurrent = today && moment().hour() === hour}
-					{@const hourEvts = (eventsByDay.get(dk) ?? []).filter(e => !e.allDay && e.start.hour() === hour)}
-					{@const hourChips = weekDayTimedTargets.get(dk)?.get(hour) ?? []}
+					{@const hourEvts = (visibleEventsByDay.get(dk) ?? []).filter(e => !e.allDay && e.start.hour() === hour)}
+					{@const hourChips = showTargetFiles ? (weekDayTimedTargets.get(dk)?.get(hour) ?? []) : []}
 					<!-- svelte-ignore a11y-no-static-element-interactions -->
 					<div
 						class="tm-cal-week-hour-cell"
@@ -1555,6 +1895,89 @@
 		{/if}
 
 	{/if}
+
+	<!-- ── Agenda view ────────────────────────────────────────────────────── -->
+	{#if viewType === "agenda"}
+		{@const agendaDays = Array.from({ length: 30 }, (_, i) => anchor.clone().add(i, "day"))}
+		<div class="tm-cal-agenda">
+			{#each agendaDays as day (dayKey(day))}
+				{@const dk = dayKey(day)}
+				{@const agEvts = visibleEventsByDay.get(dk) ?? []}
+				{@const agTargets = showTargetFiles ? (dayTargets.get(dk) ?? []) : []}
+				{#if agEvts.length > 0 || agTargets.length > 0}
+					{@const today = isToday(day)}
+					<div class="tm-cal-agenda-day" class:tm-cal-agenda-day--today={today}>
+						<div class="tm-cal-agenda-day-header">
+							<button
+								class="tm-cal-agenda-day-label"
+								class:tm-cal-agenda-day-label--today={today}
+								on:click={() => { anchorDate = dk; viewType = "day"; }}
+								title="Switch to day view for {day.format('MMM D')}"
+							>
+								<span class="tm-cal-agenda-day-dow">{day.format("ddd")}</span>
+								<span class="tm-cal-agenda-day-num">{day.format("D")}</span>
+								{#if today}<span class="tm-cal-agenda-today-chip">Today</span>{/if}
+							</button>
+							{#if dayEnabled}
+								{@const dn = noteExistsForDay(day)}
+								<button
+									class="tm-cal-agenda-note-btn"
+									class:tm-cal-agenda-note-btn--exists={dn}
+									on:click={() => void openDay(day)}
+									title="{dn ? 'Open' : 'Create'} daily note"
+								>
+									<Icon name={dn ? "file-text" : "file-plus"} size={12} />
+								</button>
+							{/if}
+						</div>
+						<div class="tm-cal-agenda-day-body">
+							{#each agEvts as evt (evt.uid)}
+								{@const timeText = evt.allDay ? "All day" : evt.end ? `${evt.start.format("h:mm")}–${evt.end.format("h:mm a")}` : evt.start.format("h:mm a")}
+								<div
+									class="tm-cal-agenda-evt"
+									style={evt.sourceColor ? `border-left-color:${evt.sourceColor}` : ""}
+									title={evt.summary}
+								>
+									<span class="tm-cal-agenda-evt-time">{timeText}</span>
+									<span class="tm-cal-agenda-evt-title">{evt.summary}</span>
+								</div>
+							{/each}
+							{#each agTargets as tf (tf.path)}
+								{@const _ag = getFileStatus(tf)}
+								<div class="tm-cal-target-chip" title="{tf.basename} — drag to move, click × to remove" on:contextmenu={(e) => showChipMenu(e, tf)}>
+									{#if _ag}<button class="tm-cal-target-chip-status" title={_ag} on:click={(e) => void cycleStatus(e, tf)}>{@html statusSvg(_ag)}</button>{/if}
+									<!-- svelte-ignore a11y-no-static-element-interactions -->
+									<span
+										class="tm-cal-target-chip-name"
+										draggable={true}
+										on:dragstart={(e) => {
+											setDragPayload({ type: "file", filePath: tf.path });
+											if (e.dataTransfer) {
+												e.dataTransfer.effectAllowed = "copy";
+												e.dataTransfer.setData("text/plain", tf.path);
+											}
+										}}
+										on:dragend={() => setDragPayload(null)}
+										on:dblclick={(e) => previewChip(e, tf)}
+									>{tf.basename}</span>
+									<button
+										class="tm-cal-target-chip-remove"
+										draggable={false}
+										on:click={(e) => void clearTargetDate(e, tf)}
+										aria-label="Remove target date from {tf.basename}"
+									>×</button>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+			{/each}
+			{#if agendaDays.every(d => (visibleEventsByDay.get(dayKey(d)) ?? []).length === 0 && (!showTargetFiles || (dayTargets.get(dayKey(d)) ?? []).length === 0))}
+				<div class="tm-cal-agenda-empty">No events or scheduled files in the next 30 days.</div>
+			{/if}
+		</div>
+	{/if}
+
 	</div><!-- /.tm-cal-content -->
 	</div><!-- /.tm-cal-body -->
 </div>
@@ -1584,6 +2007,7 @@
 		flex-direction: column;
 		overflow: hidden;
 		min-width: 0;
+		position: relative;
 	}
 
 	/* ── Panel toggle button group ── */
@@ -1679,10 +2103,120 @@
 		white-space: nowrap;
 	}
 
-	.tm-cal-loading {
-		font-size: var(--font-ui-smaller);
-		color: var(--text-faint);
-		margin-left: 4px;
+	/* ── Skeleton / loading ── */
+	@keyframes shimmer {
+		0%   { background-position: -400px 0; }
+		100% { background-position:  400px 0; }
+	}
+
+	.shimmer {
+		background: linear-gradient(
+			90deg,
+			var(--background-modifier-hover) 25%,
+			color-mix(in srgb, var(--background-modifier-hover) 50%, var(--background-secondary)) 50%,
+			var(--background-modifier-hover) 75%
+		);
+		background-size: 400px 100%;
+		animation: shimmer 1.4s ease-in-out infinite;
+		border-radius: var(--radius-s);
+	}
+
+	.tm-cal-skeleton {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		z-index: 2;
+		background: var(--background-primary);
+		overflow: hidden;
+	}
+
+	/* Day skeleton */
+	.tm-cal-skeleton-day {
+		display: flex;
+		flex-direction: column;
+		padding-top: 8px;
+	}
+	.tm-cal-skeleton-slot {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		height: 44px;
+		padding: 0 16px 0 16px;
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+	.tm-cal-skeleton-time {
+		width: 40px;
+		height: 11px;
+		flex-shrink: 0;
+	}
+	.tm-cal-skeleton-evt {
+		height: 28px;
+	}
+
+	/* Week skeleton */
+	.tm-cal-skeleton-week {
+		display: flex;
+		gap: 1px;
+		padding: 48px 8px 0;
+		height: 100%;
+	}
+	.tm-cal-skeleton-col {
+		flex: 1;
+		position: relative;
+	}
+
+	/* Month skeleton */
+	.tm-cal-skeleton-month {
+		display: grid;
+		grid-template-columns: repeat(7, 1fr);
+		gap: 1px;
+		padding: 32px 0 0;
+	}
+	.tm-cal-skeleton-cell {
+		padding: 6px 8px;
+		min-height: 80px;
+	}
+	.tm-cal-skeleton-cell-num {
+		width: 22px;
+		height: 22px;
+		border-radius: 50%;
+		margin-bottom: 6px;
+	}
+	.tm-cal-skeleton-cell-bar {
+		height: 14px;
+		width: 85%;
+	}
+
+	/* Generic skeleton */
+	.tm-cal-skeleton-generic {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+		padding: 32px 24px;
+	}
+	.tm-cal-skeleton-line {
+		height: 14px;
+	}
+
+	/* Re-fetch progress bar */
+	.tm-cal-progress-bar {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 2px;
+		z-index: 2;
+		overflow: hidden;
+		pointer-events: none;
+	}
+	.tm-cal-progress-bar-fill {
+		height: 100%;
+		background: var(--interactive-accent);
+		animation: progress-slide 1.2s ease-in-out infinite;
+	}
+	@keyframes progress-slide {
+		0%   { transform: translateX(-100%); }
+		100% { transform: translateX(400%); }
 	}
 
 	.tm-cal-today-btn {
@@ -1718,6 +2252,203 @@
 	.tm-cal-view-btn--active {
 		background: var(--background-modifier-hover);
 		color: var(--text-normal);
+	}
+
+	/* ── Filter panel ── */
+	.tm-cal-filter-panel {
+		width: 220px;
+		min-width: 180px;
+		flex-shrink: 0;
+		border-right: 1px solid var(--background-modifier-border);
+		overflow-y: auto;
+		background: var(--background-primary);
+		padding: 12px 0 16px;
+	}
+
+	.tm-cal-filter-section {
+		margin-bottom: 8px;
+	}
+
+	.tm-cal-filter-section-title {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: var(--text-faint);
+		padding: 4px 16px 6px;
+	}
+
+	.tm-cal-filter-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 5px 16px;
+		cursor: pointer;
+		border-radius: 0;
+		transition: background 80ms ease;
+		user-select: none;
+	}
+	.tm-cal-filter-row:hover { background: var(--background-modifier-hover); }
+
+	.tm-cal-filter-check {
+		width: 16px;
+		height: 16px;
+		border-radius: 4px;
+		border: 2px solid var(--background-modifier-border);
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		color: white;
+		transition: background 80ms ease, border-color 80ms ease;
+	}
+	.tm-cal-filter-check--on { color: white; }
+
+	.tm-cal-filter-label {
+		font-size: var(--font-ui-small);
+		color: var(--text-normal);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	/* ── List panel ── */
+	.tm-cal-list-panel {
+		width: 260px;
+		min-width: 200px;
+		flex-shrink: 0;
+		border-right: 1px solid var(--background-modifier-border);
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		background: var(--background-primary);
+	}
+
+	.tm-cal-list-empty {
+		padding: 32px 20px;
+		text-align: center;
+		color: var(--text-faint);
+		font-size: var(--font-ui-small);
+	}
+
+	.tm-cal-list-day {
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+
+	.tm-cal-list-day--today .tm-cal-list-day-header {
+		background: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
+	}
+
+	.tm-cal-list-day-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 16px 6px;
+		position: sticky;
+		top: 0;
+		background: var(--background-primary);
+		z-index: 1;
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+
+	.tm-cal-list-day-label {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+		cursor: pointer;
+		flex: 1;
+		min-width: 0;
+		color: var(--text-muted);
+		border-radius: var(--radius-s);
+		padding: 2px 4px;
+		margin: -2px -4px;
+		transition: background 80ms ease;
+	}
+	.tm-cal-list-day-label:hover { background: var(--background-modifier-hover); }
+	.tm-cal-list-day-label--today { color: var(--text-normal); }
+
+	.tm-cal-list-day-dow {
+		font-size: var(--font-ui-small);
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.tm-cal-list-day-num {
+		font-size: 20px;
+		font-weight: 600;
+		line-height: 1;
+		font-variant-numeric: tabular-nums;
+	}
+	.tm-cal-list-day-num--today {
+		color: var(--interactive-accent);
+	}
+
+	.tm-cal-list-day-month {
+		font-size: var(--font-ui-smaller);
+		color: var(--text-faint);
+	}
+
+	.tm-cal-list-today-chip {
+		font-size: 10px;
+		font-weight: 600;
+		padding: 1px 6px;
+		border-radius: 99px;
+		background: var(--interactive-accent);
+		color: var(--text-on-accent);
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+	}
+
+	.tm-cal-list-note-btn {
+		all: unset;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		border-radius: var(--radius-s);
+		color: var(--text-faint);
+		flex-shrink: 0;
+		transition: background 80ms ease, color 80ms ease;
+	}
+	.tm-cal-list-note-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+	.tm-cal-list-note-btn--exists { color: var(--text-muted); }
+
+	.tm-cal-list-day-body {
+		padding: 6px 16px 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.tm-cal-list-evt {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		padding: 4px 10px;
+		border-radius: var(--radius-s);
+		background: var(--background-secondary);
+		border-left: 3px solid var(--interactive-accent);
+		font-size: var(--font-ui-smaller);
+		overflow: hidden;
+	}
+
+	.tm-cal-list-evt-time {
+		flex-shrink: 0;
+		color: var(--text-muted);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		min-width: 80px;
+	}
+
+	.tm-cal-list-evt-title {
+		color: var(--text-normal);
+		font-weight: 500;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	/* ── Day view ── */
@@ -2620,5 +3351,133 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 4px;
+	}
+
+	/* ── Agenda view ── */
+	.tm-cal-agenda {
+		flex: 1;
+		overflow-y: auto;
+		padding: 8px 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.tm-cal-agenda-empty {
+		padding: 24px 20px;
+		color: var(--text-faint);
+		font-size: var(--font-ui-small);
+		text-align: center;
+	}
+
+	.tm-cal-agenda-day {
+		display: flex;
+		flex-direction: column;
+		border-bottom: 1px solid var(--background-modifier-border);
+	}
+	.tm-cal-agenda-day--today {
+		background: color-mix(in srgb, var(--interactive-accent) 5%, transparent);
+	}
+
+	.tm-cal-agenda-day-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 16px 4px;
+	}
+
+	.tm-cal-agenda-day-label {
+		all: unset;
+		cursor: pointer;
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+		flex: 1;
+	}
+	.tm-cal-agenda-day-label:hover .tm-cal-agenda-day-num {
+		color: var(--interactive-accent);
+	}
+
+	.tm-cal-agenda-day-dow {
+		font-size: var(--font-ui-smaller);
+		font-weight: 600;
+		color: var(--text-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		min-width: 28px;
+	}
+
+	.tm-cal-agenda-day-num {
+		font-size: var(--font-ui-medium);
+		font-weight: 600;
+		color: var(--text-normal);
+		transition: color 80ms ease;
+	}
+
+	.tm-cal-agenda-day-label--today .tm-cal-agenda-day-dow {
+		color: var(--interactive-accent);
+	}
+	.tm-cal-agenda-day-label--today .tm-cal-agenda-day-num {
+		color: var(--interactive-accent);
+	}
+
+	.tm-cal-agenda-today-chip {
+		font-size: var(--font-ui-smaller);
+		font-weight: 500;
+		color: var(--interactive-accent);
+		background: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+		border-radius: 10px;
+		padding: 1px 7px;
+	}
+
+	.tm-cal-agenda-note-btn {
+		all: unset;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+		border-radius: var(--radius-s);
+		color: var(--text-faint);
+		transition: background 80ms ease, color 80ms ease;
+	}
+	.tm-cal-agenda-note-btn:hover {
+		background: var(--background-modifier-hover);
+		color: var(--text-normal);
+	}
+	.tm-cal-agenda-note-btn--exists { color: var(--text-muted); }
+	.tm-cal-agenda-note-btn--exists:hover { color: var(--text-accent); }
+
+	.tm-cal-agenda-day-body {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding: 2px 16px 10px 52px;
+	}
+
+	.tm-cal-agenda-evt {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+		padding: 4px 8px;
+		border-left: 3px solid var(--interactive-accent);
+		border-radius: 0 var(--radius-s) var(--radius-s) 0;
+		background: var(--background-secondary);
+		font-size: var(--font-ui-small);
+	}
+
+	.tm-cal-agenda-evt-time {
+		flex-shrink: 0;
+		color: var(--text-muted);
+		font-size: var(--font-ui-smaller);
+		min-width: 80px;
+	}
+
+	.tm-cal-agenda-evt-title {
+		color: var(--text-normal);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 </style>

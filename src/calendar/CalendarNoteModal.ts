@@ -1,4 +1,4 @@
-import { FuzzySuggestModal, normalizePath } from "obsidian";
+import { FuzzySuggestModal, Modal, normalizePath } from "obsidian";
 import type { App, TFile } from "obsidian";
 
 interface CoreTemplatesPlugin {
@@ -29,6 +29,55 @@ function getTemplatesFolder(app: App): string | null {
 	if (templaterFolder) return normalizePath(templaterFolder);
 
 	return null;
+}
+
+/** Simple single-input modal that asks the user for a note title. */
+export class NoteNameModal extends Modal {
+	private _defaultName: string;
+	private _onSubmit: (name: string) => void;
+
+	constructor(app: App, defaultName: string, onSubmit: (name: string) => void) {
+		super(app);
+		this._defaultName = defaultName;
+		this._onSubmit = onSubmit;
+	}
+
+	onOpen(): void {
+		const { contentEl } = this;
+		contentEl.createEl("h3", { text: "Note title", cls: "tm-note-name-heading" });
+
+		const input = contentEl.createEl("input", {
+			type: "text",
+			value: this._defaultName,
+			cls: "tm-note-name-input",
+		});
+		input.style.cssText = "width:100%;margin:8px 0 16px;font-size:var(--font-ui-medium);padding:6px 10px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);background:var(--background-primary);color:var(--text-normal);box-sizing:border-box;";
+
+		const btnRow = contentEl.createDiv({ cls: "tm-note-name-btns" });
+		btnRow.style.cssText = "display:flex;justify-content:flex-end;gap:8px;";
+
+		const cancel = btnRow.createEl("button", { text: "Cancel" });
+		cancel.onclick = () => this.close();
+
+		const create = btnRow.createEl("button", { text: "Create", cls: "mod-cta" });
+		create.onclick = () => {
+			const name = input.value.trim();
+			if (name) { this._onSubmit(name); this.close(); }
+		};
+
+		// Submit on Enter
+		input.addEventListener("keydown", (e: KeyboardEvent) => {
+			if (e.key === "Enter") { e.preventDefault(); create.click(); }
+			if (e.key === "Escape") { e.preventDefault(); this.close(); }
+		});
+
+		// Select all text so user can immediately retype
+		setTimeout(() => { input.select(); }, 10);
+	}
+
+	onClose(): void {
+		this.contentEl.empty();
+	}
 }
 
 export class ExistingNoteSuggestModal extends FuzzySuggestModal<TFile> {

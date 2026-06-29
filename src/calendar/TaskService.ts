@@ -52,7 +52,7 @@ export async function getTasksForPeriod(
 
 	// 1. Periodic notes for any enabled granularity whose parsed date is in range.
 	for (const g of granularities) {
-		if (!plugin.settings[g].enabled) continue;
+		if (!plugin.settings.time[g].enabled) continue;
 		const fmt = getFormat(plugin.getConfig(g), g);
 
 		for (const file of app.vault.getMarkdownFiles()) {

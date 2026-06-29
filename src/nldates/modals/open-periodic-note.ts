@@ -26,7 +26,7 @@ export default class OpenPeriodicNoteModal extends Modal {
 
 		// Default to day; only show granularities that are currently enabled.
 		const enabledGranularities = granularities.filter(
-			(g) => this.nld.plugin.settings[g].enabled
+			(g) => this.nld.plugin.settings.time[g].enabled
 		);
 
 		if (enabledGranularities.length === 0) {
@@ -45,7 +45,7 @@ export default class OpenPeriodicNoteModal extends Modal {
 
 		const buildPreview = (): string => {
 			const input = dateInput.trim() || "today";
-			const fmt = this.nld.plugin.settings[selectedGranularity].format || "YYYY-MM-DD";
+			const fmt = this.nld.plugin.settings.time[selectedGranularity].format || "YYYY-MM-DD";
 			const result = this.nld.parse(input, fmt);
 			return result.moment.isValid() ? result.formattedString : "⚠ Unrecognised date";
 		};
@@ -94,7 +94,7 @@ export default class OpenPeriodicNoteModal extends Modal {
 			form.addEventListener("submit", (e: Event) => {
 				e.preventDefault();
 				const input = dateInput.trim() || "today";
-				const fmt = this.nld.plugin.settings[selectedGranularity].format || "YYYY-MM-DD";
+				const fmt = this.nld.plugin.settings.time[selectedGranularity].format || "YYYY-MM-DD";
 				const result = this.nld.parse(input, fmt);
 
 				if (!result.moment.isValid()) {

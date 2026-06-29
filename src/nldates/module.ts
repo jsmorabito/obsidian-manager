@@ -30,7 +30,7 @@ export class NLDatesModule {
 	}
 
 	get settings(): NLDatesSettings {
-		return this.plugin.settings.time.time.nlDates;
+		return this.plugin.settings.time.nlDates;
 	}
 
 	/**
@@ -51,7 +51,7 @@ export class NLDatesModule {
 	 * as the output format. This is the default for date insertion and autosuggest.
 	 */
 	parseDate(dateString: string): NLDResult {
-		const format = this.plugin.settings.time.time.day.format || "YYYY-MM-DD";
+		const format = this.plugin.settings.time.day.format || "YYYY-MM-DD";
 		return this.parse(dateString, format);
 	}
 
@@ -65,13 +65,13 @@ export class NLDatesModule {
 	parseDateSmart(dateString: string): NLDResult {
 		const lower = dateString.toLowerCase();
 		if (/\bmonth\b/.test(lower)) {
-			return this.parse(dateString, this.plugin.settings.time.time.month.format || "YYYY-MM");
+			return this.parse(dateString, this.plugin.settings.time.month.format || "YYYY-MM");
 		}
 		if (/\byear\b/.test(lower)) {
-			return this.parse(dateString, this.plugin.settings.time.time.year.format || "YYYY");
+			return this.parse(dateString, this.plugin.settings.time.year.format || "YYYY");
 		}
 		if (/\bweek\b/.test(lower)) {
-			return this.parse(dateString, this.plugin.settings.time.time.week.format || "gggg-[W]ww");
+			return this.parse(dateString, this.plugin.settings.time.week.format || "gggg-[W]ww");
 		}
 		return this.parseDate(dateString);
 	}
@@ -83,7 +83,7 @@ export class NLDatesModule {
 
 	/** Parse a natural language date+time string using date + separator + time. */
 	parseDateTime(dateString: string): NLDResult {
-		const dayFmt = this.plugin.settings.time.time.day.format || "YYYY-MM-DD";
+		const dayFmt = this.plugin.settings.time.day.format || "YYYY-MM-DD";
 		const format = `${dayFmt}${this.settings.separator}${this.settings.timeFormat}`;
 		return this.parse(dateString, format);
 	}

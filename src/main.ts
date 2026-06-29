@@ -559,8 +559,14 @@ export default class ManagerPlugin extends Plugin {
 	// ── Settings ──────────────────────────────────────────────────────────────
 
 	async loadSettings(): Promise<void> {
-		const saved = (await this.loadData()) as Partial<ManagerSettings> | null;
-		this.settings = mergeSettings(DEFAULT_MANAGER_SETTINGS, saved);
+		const saved = (await this.loadData()) as Partial<ManagerSettings> & { migrated?: boolean } | null;
+		if (!saved?.migrated) {
+			const migrated = await migrateFromLegacyPlugins(this.app, saved);
+			this.settings = mergeSettings(DEFAULT_MANAGER_SETTINGS, { ...migrated, migrated: true } as Partial<ManagerSettings>);
+			await this.saveData({ ...this.settings, migrated: true });
+		} else {
+			this.settings = mergeSettings(DEFAULT_MANAGER_SETTINGS, saved);
+		}
 	}
 
 	async saveSettings(): Promise<void> {
@@ -1290,12 +1296,54 @@ export default class ManagerPlugin extends Plugin {
 	}
 }
 
+// ── Legacy migration ──────────────────────────────────────────────────────────
+
+async function readLegacyData(app: App, pluginId: string): Promise<Record<string, unknown> | null> {
+	try {
+		const path = `${app.vault.configDir}/plugins/${pluginId}/data.json`;
+		const raw = await app.vault.adapter.read(path);
+		return JSON.parse(raw) as Record<string, unknown>;
+	} catch {
+		return null;
+	}
+}
+
+async function migrateFromLegacyPlugins(
+	app: App,
+	existing: Partial<ManagerSettings> | null,
+): Promise<Partial<ManagerSettings>> {
+	const result: Partial<ManagerSettings> = { ...existing };
+	let didMigrate = false;
+
+	if (!existing?.time) {
+		const timeData = await readLegacyData(app, "obsidian-time-tools");
+		if (timeData) {
+			result.time = timeData as unknown as import("./time-settings").TimeManagerSettings;
+			didMigrate = true;
+		}
+	}
+
+	if (!existing?.tasks) {
+		const taskData = await readLegacyData(app, "obsidian-task-tools");
+		if (taskData) {
+			result.tasks = taskData as unknown as TaskToolsSettings;
+			didMigrate = true;
+		}
+	}
+
+	if (didMigrate) {
+		new Notice("Manager: settings imported from Time Tools and Task Tools.", 6000);
+	}
+
+	return result;
+}
+
 // ── Settings merge ────────────────────────────────────────────────────────────
 
 function mergeSettings(defaults: ManagerSettings, saved: Partial<ManagerSettings> | null | undefined): ManagerSettings {
 	if (!saved) return JSON.parse(JSON.stringify(defaults)) as ManagerSettings;
 
-	const savedTime = saved.time ?? {};
+	const savedTime: Partial<TimeManagerSettings> = saved.time ?? {};
 	const periodicMerge = Object.fromEntries(
 		granularities.map((g) => [g, { ...defaults.time[g], ...(savedTime[g] ?? {}) }])
 	) as Pick<TimeManagerSettings, typeof granularities[number]>;
@@ -1309,7 +1357,8 @@ function mergeSettings(defaults: ManagerSettings, saved: Partial<ManagerSettings
 		rvShowPath:                 savedTime.rvShowPath                 ?? defaults.time.rvShowPath,
 		recentFiles:                savedTime.recentFiles                ?? defaults.time.recentFiles,
 		nlDates:                    { ...defaults.time.nlDates, ...(savedTime.nlDates ?? {}) },
-		calendarSources:            savedTime.calendarSources            ?? defaults.time.calendarSources,
+		calendarSources:            (savedTime.calendarSources ?? defaults.time.calendarSources).map((s: import("./calendar/types").CalendarSource) => ({ ...s, visible: s.visible ?? true })),
+		showTargetFiles:            savedTime.showTargetFiles            ?? defaults.time.showTargetFiles,
 		inboxDisplay:               { ...defaults.time.inboxDisplay, ...(savedTime.inboxDisplay ?? {}) },
 		inboxTags:                  savedTime.inboxTags                  ?? defaults.time.inboxTags,
 		inboxExcludeTags:           savedTime.inboxExcludeTags           ?? defaults.time.inboxExcludeTags,
