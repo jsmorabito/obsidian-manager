@@ -32,7 +32,6 @@ export const CHAIN_VIEW_TYPE = "task-tools-chain-view";
 
 export class ChainView extends ItemView {
 	plugin: TaskToolsPlugin;
-	private viewModes: Map<string, "dots" | "list"> = new Map();
 	private renderDebounceTimer: number | null = null;
 	private mainEditorFile: TFile | null = null;
 
@@ -123,21 +122,25 @@ export class ChainView extends ItemView {
 		addBtn.addEventListener("click", (e) => {
 			this.plugin.openAddToChainMenu(e, chain);
 		});
-		const dotsBtn = toggleGroup.createEl("button", { cls: "chain-view-toggle-btn", attr: { "aria-label": "Dots view" } });
-		setIcon(dotsBtn, "more-horizontal");
-		const listBtn = toggleGroup.createEl("button", { cls: "chain-view-toggle-btn", attr: { "aria-label": "List view" } });
-		setIcon(listBtn, "list");
 
-		const mode = this.viewModes.get(chain.idKey) ?? "dots";
-		if (mode === "dots") dotsBtn.classList.add("is-active");
-		else listBtn.classList.add("is-active");
+		const savedModes = this.plugin.taskSettings.chainViewModes ?? {};
+		let mode: "dots" | "list" = savedModes[chain.idKey] ?? "dots";
+
+		const viewToggleBtn = toggleGroup.createEl("button", {
+			cls: "chain-view-toggle-btn",
+			attr: { "aria-label": mode === "dots" ? "Switch to list view" : "Switch to dots view" },
+		});
+		setIcon(viewToggleBtn, mode === "dots" ? "list" : "more-horizontal");
 
 		const trackWrapper = section.createEl("div");
 
-		const switchMode = (newMode: "dots" | "list") => {
-			this.viewModes.set(chain.idKey, newMode);
-			dotsBtn.classList.toggle("is-active", newMode === "dots");
-			listBtn.classList.toggle("is-active", newMode === "list");
+		const switchMode = async (newMode: "dots" | "list") => {
+			mode = newMode;
+			if (!this.plugin.taskSettings.chainViewModes) this.plugin.taskSettings.chainViewModes = {};
+			this.plugin.taskSettings.chainViewModes[chain.idKey] = newMode;
+			await this.plugin.saveSettings();
+			setIcon(viewToggleBtn, newMode === "dots" ? "list" : "more-horizontal");
+			viewToggleBtn.setAttribute("aria-label", newMode === "dots" ? "Switch to list view" : "Switch to dots view");
 			trackWrapper.empty();
 			if (currentTask && items.length > 0) {
 				if (newMode === "dots") renderDots(trackWrapper);
@@ -145,8 +148,7 @@ export class ChainView extends ItemView {
 			}
 		};
 
-		dotsBtn.addEventListener("click", () => switchMode("dots"));
-		listBtn.addEventListener("click", () => switchMode("list"));
+		viewToggleBtn.addEventListener("click", () => { void switchMode(mode === "dots" ? "list" : "dots"); });
 
 		const currentTask = this.plugin.findCurrentTask(chain);
 

@@ -26,6 +26,8 @@ export interface TaskToolsSettings {
 	// Checkbox icons
 	enableCheckboxIcons: boolean;
 	checkboxStatuses: CheckboxStatus[];
+	// Chain view display state: maps chain idKey → "dots" | "list"
+	chainViewModes: Record<string, "dots" | "list">;
 }
 
 /** Convert a display name to a lowercase kebab-case slug, e.g. "My Chain" → "my-chain". */
@@ -68,6 +70,7 @@ export const DEFAULT_SETTINGS: TaskToolsSettings = {
 	linearIssueFolder: "Linear",
 	enableCheckboxIcons: false,
 	checkboxStatuses: DEFAULT_CHECKBOX_STATUSES,
+	chainViewModes: {},
 };
 
 class FileSuggest extends AbstractInputSuggest<TFile> {

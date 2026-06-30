@@ -392,6 +392,12 @@ export default class ManagerPlugin extends Plugin {
 						const firstMark = marks[0] ?? " ";
 						const insertCh = bulletMatch[0]!.length;
 						editor.replaceRange(lineText.substring(0, insertCh) + `[${firstMark}] ` + lineText.substring(insertCh), { line: cursor.line, ch: 0 }, { line: cursor.line, ch: lineText.length });
+					} else if (lineText.trim() === "") {
+						const indent = lineText.match(/^(\s*)/)?.[1] ?? "";
+						const firstMark = marks[0] ?? " ";
+						const newLine = `${indent}- [${firstMark}] `;
+						editor.replaceRange(newLine, { line: cursor.line, ch: 0 }, { line: cursor.line, ch: lineText.length });
+						editor.setCursor({ line: cursor.line, ch: newLine.length });
 					}
 				}
 			},
