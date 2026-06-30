@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-manager",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"description": "Unified task and time management for Obsidian.",
 	"main": "main.js",
 	"type": "module",
