@@ -9,10 +9,11 @@
  *  - Surface errors without crashing the plugin
  */
 
-import { App, Notice, TFile, normalizePath } from "obsidian";
+import { App, Notice, TFile, normalizePath, stringifyYaml } from "obsidian";
 import { LinearClient } from "./client";
 import type { LinearIssueStub, LinearWorkspaceConfig } from "../types";
 import type { TaskToolsSettings } from "../settings";
+import { parseTemplate } from "../templateUtils";
 
 /** Frontmatter keys written to imported issue notes. */
 export const LINEAR_FM = {
@@ -97,7 +98,7 @@ export class LinearManager {
 		const fileName = `${issue.identifier} ${safeName}.md`;
 		const filePath = normalizePath(`${folder}/${fileName}`);
 
-		const body = this.buildNoteBody(issue);
+		const body = await this.buildNoteBody(issue);
 		const file = await this.app.vault.create(filePath, body);
 
 		new Notice(`Imported ${issue.identifier}: ${issue.title}`);
@@ -113,27 +114,49 @@ export class LinearManager {
 		return null;
 	}
 
-	/** Build the initial markdown content for a newly imported issue note. */
-	private buildNoteBody(issue: LinearIssueStub): string {
+	/**
+	 * Build the initial markdown content for a newly imported issue note.
+	 * If a linear issue template is configured, its frontmatter is the base
+	 * (linear-managed keys take precedence) and its body replaces the default,
+	 * with {{title}}/{{identifier}}/{{url}}/{{status}}/{{priority}}/{{team}}
+	 * placeholders resolved.
+	 */
+	private async buildNoteBody(issue: LinearIssueStub): Promise<string> {
 		const now = new Date().toISOString();
 		const priorityLabel = ["No priority", "Urgent", "High", "Medium", "Low"][issue.priority] ?? "Unknown";
 
-		const fm = [
-			"---",
-			`${LINEAR_FM.workspaceId}: "${issue.workspaceId}"`,
-			`${LINEAR_FM.issueId}: "${issue.id}"`,
-			`${LINEAR_FM.identifier}: "${issue.identifier}"`,
-			`${LINEAR_FM.url}: "${issue.url}"`,
-			`${LINEAR_FM.stateName}: "${issue.stateName}"`,
-			`${LINEAR_FM.stateType}: "${issue.stateType}"`,
-			`${LINEAR_FM.priority}: ${issue.priority}`,
-			`${LINEAR_FM.teamId}: "${issue.teamId}"`,
-			`${LINEAR_FM.teamName}: "${issue.teamName}"`,
-			`${LINEAR_FM.lastSynced}: "${now}"`,
-			"---",
-		].join("\n");
+		const linearFm: Record<string, unknown> = {
+			[LINEAR_FM.workspaceId]: issue.workspaceId,
+			[LINEAR_FM.issueId]: issue.id,
+			[LINEAR_FM.identifier]: issue.identifier,
+			[LINEAR_FM.url]: issue.url,
+			[LINEAR_FM.stateName]: issue.stateName,
+			[LINEAR_FM.stateType]: issue.stateType,
+			[LINEAR_FM.priority]: issue.priority,
+			[LINEAR_FM.teamId]: issue.teamId,
+			[LINEAR_FM.teamName]: issue.teamName,
+			[LINEAR_FM.lastSynced]: now,
+		};
 
-		return `${fm}\n\n# ${issue.identifier}: ${issue.title}\n\n[Open in Linear](${issue.url})\n\n**Status:** ${issue.stateName}  \n**Priority:** ${priorityLabel}  \n**Team:** ${issue.teamName}\n`;
+		const templatePath = this.getSettings().linearTemplatePath;
+		if (templatePath) {
+			const templateFile = this.app.vault.getFileByPath(templatePath);
+			if (templateFile) {
+				const raw = await this.app.vault.read(templateFile);
+				const { templateFm, body } = parseTemplate(raw);
+				const merged = { ...templateFm, ...linearFm };
+				const resolvedBody = body
+					.replace(/\{\{title\}\}/gi, issue.title)
+					.replace(/\{\{identifier\}\}/gi, issue.identifier)
+					.replace(/\{\{url\}\}/gi, issue.url)
+					.replace(/\{\{status\}\}/gi, issue.stateName)
+					.replace(/\{\{priority\}\}/gi, priorityLabel)
+					.replace(/\{\{team\}\}/gi, issue.teamName);
+				return `---\n${stringifyYaml(merged)}---\n${resolvedBody}`;
+			}
+		}
+
+		return `---\n${stringifyYaml(linearFm)}---\n\n# ${issue.identifier}: ${issue.title}\n\n[Open in Linear](${issue.url})\n\n**Status:** ${issue.stateName}  \n**Priority:** ${priorityLabel}  \n**Team:** ${issue.teamName}\n`;
 	}
 
 	/** Update only the Linear-managed frontmatter keys on an existing note. */

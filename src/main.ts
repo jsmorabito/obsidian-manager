@@ -48,6 +48,7 @@ import { TIME_MANAGER_INBOX_VIEW, InboxView } from "./inbox/view";
 import { registerInboxCommands, addInboxFileMenuItem } from "./inbox/commands";
 import { InboxService } from "./editor/InboxService";
 import { TargetDateService } from "./target-date/target-date-service";
+import { TargetDateModal } from "./target-date/TargetDateModal";
 import { ReminderService } from "./reminders/ReminderService";
 import { ReminderChipManager } from "./reminders/ReminderChipManager";
 import { CHAIN_VIEW_TYPE, ChainView, QuickAddFileModal } from "./tasks/chainView";
@@ -394,8 +395,7 @@ export default class ManagerPlugin extends Plugin {
 						editor.replaceRange(lineText.substring(0, insertCh) + `[${firstMark}] ` + lineText.substring(insertCh), { line: cursor.line, ch: 0 }, { line: cursor.line, ch: lineText.length });
 					} else if (lineText.trim() === "") {
 						const indent = lineText.match(/^(\s*)/)?.[1] ?? "";
-						const firstMark = marks[0] ?? " ";
-						const newLine = `${indent}- [${firstMark}] `;
+						const newLine = `${indent}- `;
 						editor.replaceRange(newLine, { line: cursor.line, ch: 0 }, { line: cursor.line, ch: lineText.length });
 						editor.setCursor({ line: cursor.line, ch: newLine.length });
 					}
@@ -427,6 +427,24 @@ export default class ManagerPlugin extends Plugin {
 			},
 		});
 		this.addCommand({ id: "new-task", name: "New task", callback: () => new NewTaskModal(this.app, this).open() });
+		this.addCommand({
+			id: "add-target-date",
+			name: "Add target date",
+			checkCallback: (checking: boolean) => {
+				const file = this.app.workspace.getActiveFile();
+				if (!file) return false;
+				if (!checking) {
+					const existing = this.targetDateService.getTargetDate(file);
+					new TargetDateModal(
+						this.app,
+						existing,
+						(date, gran) => void this.targetDateService.setTargetDate(file, date, gran),
+						() => void this.targetDateService.clearTargetDate(file)
+					).open();
+				}
+				return true;
+			},
+		});
 		this.addCommand({
 			id: "new-chain-item",
 			name: "New item for chain…",

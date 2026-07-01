@@ -1,4 +1,4 @@
-import { Component, MarkdownPostProcessorContext, TFile } from "obsidian";
+import { MarkdownPostProcessorContext, MarkdownRenderChild, TFile } from "obsidian";
 import TaskToolsPlugin from "./main";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -101,12 +101,19 @@ export function applyCheckboxIcons(
 		if (!checkbox) continue;
 
 		const mark = item.getAttribute("data-task") ?? " ";
-		new CheckboxIcon(plugin, item, checkbox, mark, ctx).load();
+		ctx.addChild(new CheckboxIcon(plugin, item, checkbox, mark, ctx));
 	}
 }
 
-class CheckboxIcon extends Component {
-	private iconEl: HTMLElement | null = null;
+// Extends MarkdownRenderChild (rather than plain Component) so Obsidian
+// automatically unloads it — restoring the native checkbox — whenever it
+// prunes our injected iconEl during a reading-view re-render that doesn't
+// go through this postprocessor again (e.g. an edit elsewhere in the
+// note). Without this, a pruned icon left the checkbox permanently
+// hidden with nothing rendered in its place until the line was edited
+// directly.
+class CheckboxIcon extends MarkdownRenderChild {
+	private readonly iconEl: HTMLElement;
 
 	constructor(
 		private plugin: TaskToolsPlugin,
@@ -115,13 +122,12 @@ class CheckboxIcon extends Component {
 		private mark: string,
 		private ctx: MarkdownPostProcessorContext
 	) {
-		super();
+		const statuses = plugin.taskSettings.checkboxStatuses ?? DEFAULT_CHECKBOX_STATUSES;
+		super(buildIconEl(mark, statuses));
+		this.iconEl = this.containerEl;
 	}
 
-	load(): this {
-		const statuses = this.plugin.taskSettings.checkboxStatuses ?? DEFAULT_CHECKBOX_STATUSES;
-		this.iconEl = buildIconEl(this.mark, statuses);
-
+	onload(): void {
 		this.checkbox.parentElement?.insertBefore(
 			this.iconEl,
 			this.checkbox.nextSibling
@@ -140,12 +146,9 @@ class CheckboxIcon extends Component {
 				this.cycle();
 			}
 		});
-
-		return this;
 	}
 
 	private refreshIcon(): void {
-		if (!this.iconEl) return;
 		const statuses = this.plugin.taskSettings.checkboxStatuses ?? DEFAULT_CHECKBOX_STATUSES;
 		const status = statuses.find((s) => s.mark === this.mark);
 
@@ -203,9 +206,8 @@ class CheckboxIcon extends Component {
 		});
 	}
 
-	unload(): void {
-		this.iconEl?.remove();
+	onunload(): void {
+		this.iconEl.remove();
 		this.checkbox.show();
-		super.unload();
 	}
 }

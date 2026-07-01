@@ -5,11 +5,11 @@ import {
 	Setting,
 	TFile,
 	normalizePath,
-	parseYaml,
 	stringifyYaml,
 } from "obsidian";
 import type TaskToolsPlugin from "./main";
 import type { ChainDefinition } from "./types";
+import { parseTemplate } from "./templateUtils";
 
 interface ChainEnrollment {
 	enabled: boolean;
@@ -266,7 +266,7 @@ export class NewTaskModal extends Modal {
 			const templateFile = this.app.vault.getFileByPath(templatePath);
 			if (templateFile) {
 				const raw = await this.app.vault.read(templateFile);
-				const { templateFm, body } = this.parseTemplate(raw);
+				const { templateFm, body } = parseTemplate(raw);
 				const merged = { ...templateFm, ...pluginFm };
 				const resolvedBody = body.replace(/\{\{title\}\}/gi, this.taskName);
 				return `---\n${stringifyYaml(merged)}---\n${resolvedBody}`;
@@ -274,27 +274,6 @@ export class NewTaskModal extends Modal {
 		}
 
 		return `---\n${stringifyYaml(pluginFm)}---\n\n# ${this.taskName}\n`;
-	}
-
-	/** Split raw file text into a parsed frontmatter object and body string. */
-	private parseTemplate(raw: string): { templateFm: Record<string, unknown>; body: string } {
-		const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
-		if (!match) return { templateFm: {}, body: raw };
-
-		const fmBlock = match[1] ?? "";
-		const body = match[2] ?? "";
-
-		let templateFm: Record<string, unknown> = {};
-		try {
-			const parsed: unknown = parseYaml(fmBlock);
-			if (parsed && typeof parsed === "object") {
-				templateFm = parsed as Record<string, unknown>;
-			}
-		} catch {
-			// Malformed template frontmatter — proceed with empty base
-		}
-
-		return { templateFm, body };
 	}
 
 	onClose(): void {

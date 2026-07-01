@@ -227,8 +227,12 @@ export class ChainView extends ItemView {
 					dragSrcIdx = idx;
 					wrapper.classList.add("is-dragging");
 					if (e.dataTransfer) {
-						e.dataTransfer.effectAllowed = "move";
-						e.dataTransfer.setData("text/plain", item.file.path);
+						e.dataTransfer.effectAllowed = "copyMove";
+						// Reorder-within-chain uses dragSrcIdx above, not this payload.
+						// This text/plain data is what lets dropping onto a note's
+						// editor insert a wikilink at the cursor (CM6's default drop
+						// handling inserts text/plain data at the drop position).
+						e.dataTransfer.setData("text/plain", `[[${item.file.basename}]]`);
 					}
 				});
 				wrapper.addEventListener("dragend", () => {
@@ -401,8 +405,12 @@ export class ChainView extends ItemView {
 					dragSrcIdx = idx;
 					row.classList.add("is-dragging");
 					if (e.dataTransfer) {
-						e.dataTransfer.effectAllowed = "move";
-						e.dataTransfer.setData("text/plain", item.file.path);
+						e.dataTransfer.effectAllowed = "copyMove";
+						// Reorder-within-chain uses dragSrcIdx above, not this payload.
+						// This text/plain data is what lets dropping onto a note's
+						// editor insert a wikilink at the cursor (CM6's default drop
+						// handling inserts text/plain data at the drop position).
+						e.dataTransfer.setData("text/plain", `[[${item.file.basename}]]`);
 					}
 				});
 				row.addEventListener("dragend", () => {

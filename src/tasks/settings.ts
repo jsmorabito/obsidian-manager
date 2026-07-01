@@ -23,6 +23,7 @@ export interface TaskToolsSettings {
 	linearSyncOnOpen: boolean;
 	linearSyncIntervalMinutes: number; // 0 = disabled
 	linearIssueFolder: string; // folder where imported issues are created
+	linearTemplatePath: string; // optional template applied on top of imported issues
 	// Checkbox icons
 	enableCheckboxIcons: boolean;
 	checkboxStatuses: CheckboxStatus[];
@@ -68,6 +69,7 @@ export const DEFAULT_SETTINGS: TaskToolsSettings = {
 	linearSyncOnOpen: true,
 	linearSyncIntervalMinutes: 0,
 	linearIssueFolder: "Linear",
+	linearTemplatePath: "",
 	enableCheckboxIcons: false,
 	checkboxStatuses: DEFAULT_CHECKBOX_STATUSES,
 	chainViewModes: {},
@@ -644,6 +646,23 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+
+		// Issue template
+		new Setting(containerEl)
+			.setName("Issue template")
+			.setDesc(
+				"Optional template file applied on top of imported linear issues. Its frontmatter is merged with the linear-managed frontmatter (linear keys take precedence); its body replaces the default note body. Supports {{title}}, {{identifier}}, {{url}}, {{status}}, {{priority}}, {{team}}."
+			)
+			.addText((text) => {
+				new FileSuggest(this.app, text.inputEl);
+				text
+					.setPlaceholder("Templates/linear-issue-template.md")
+					.setValue(this.plugin.taskSettings.linearTemplatePath)
+					.onChange(async (value) => {
+						this.plugin.taskSettings.linearTemplatePath = value.trim();
+						await this.plugin.saveSettings();
+					});
+			});
 
 		// Sync on open
 		new Setting(containerEl)
