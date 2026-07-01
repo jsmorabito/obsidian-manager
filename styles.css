@@ -2436,11 +2436,27 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	min-width: 0;
+	flex: 1;
 }
 
 .chain-view-list-name--current {
 	color: var(--interactive-accent);
 	font-weight: var(--font-semibold);
+}
+
+.chain-view-list-target-chip {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	background: var(--background-modifier-hover);
+	padding: 1px 6px;
+	border-radius: var(--radius-s);
+	white-space: nowrap;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+.chain-view-list-target-chip:hover {
+	color: var(--text-accent);
 }
 
 /* ── Dot track ───────────────────────────────────────────────────────────── */

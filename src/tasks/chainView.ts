@@ -2,6 +2,8 @@ import { FuzzySuggestModal, ItemView, MarkdownView, Menu, TFile, WorkspaceLeaf, 
 import TaskToolsPlugin from "./main";
 import type { ChainDefinition, ChainItem } from "./types";
 import { HALF_CIRCLE_SVG } from "./checkboxIcons";
+import { labelTargetDate } from "../target-date/target-date-service";
+import { TargetDateModal } from "../target-date/TargetDateModal";
 
 export class QuickAddFileModal extends FuzzySuggestModal<TFile> {
 	private plugin: TaskToolsPlugin;
@@ -394,6 +396,19 @@ export class ChainView extends ItemView {
 					cls: "chain-view-list-name" + (item.role === "current" ? " chain-view-list-name--current" : ""),
 				});
 
+				// Target date chip (far right)
+				const targetDate = this.plugin.targetDateService.getTargetDate(item.file);
+				if (targetDate) {
+					const chip = row.createEl("span", {
+						text: labelTargetDate(targetDate.raw, targetDate.granularity),
+						cls: "chain-view-list-target-chip",
+					});
+					chip.addEventListener("click", (e) => {
+						e.stopPropagation();
+						this.openTargetDateModal(item.file);
+					});
+				}
+
 				// Click to open
 				const open = async () => {
 					await this.app.workspace.getLeaf(false).openFile(item.file);
@@ -501,6 +516,20 @@ export class ChainView extends ItemView {
 						);
 					}
 
+					const existingTarget = this.plugin.targetDateService.getTargetDate(item.file);
+					menu.addItem((mi) =>
+						mi.setTitle(existingTarget ? "Change target date" : "Set target date")
+							.setIcon("target")
+							.onClick(() => this.openTargetDateModal(item.file))
+					);
+					if (existingTarget) {
+						menu.addItem((mi) =>
+							mi.setTitle("Clear target date").setIcon("x").onClick(async () => {
+								await this.plugin.targetDateService.clearTargetDate(item.file);
+							})
+						);
+					}
+
 					menu.addItem((mi) =>
 						mi.setTitle("Open file").setIcon("file-open").onClick(open)
 					);
@@ -589,6 +618,20 @@ export class ChainView extends ItemView {
 				tagsEl.createEl("span", { text: c.name, cls: "chain-view-item__tag" });
 			});
 		}
+	}
+
+	private openTargetDateModal(file: TFile): void {
+		const existing = this.plugin.targetDateService.getTargetDate(file);
+		new TargetDateModal(
+			this.app,
+			existing,
+			(date, gran) => {
+				void this.plugin.targetDateService.setTargetDate(file, date, gran);
+			},
+			() => {
+				void this.plugin.targetDateService.clearTargetDate(file);
+			}
+		).open();
 	}
 
 	private async swapOrder(a: ChainItem, b: ChainItem, chain: ChainDefinition | undefined): Promise<void> {

@@ -1629,7 +1629,6 @@
 					{@const dk = dayKey(day)}
 					{@const events = visibleEventsByDay.get(dk) ?? []}
 					{@const targets = showTargetFiles ? (dayTargets.get(dk) ?? []) : []}
-					{@const exists = noteExistsForDay(day)}
 					{@const today  = isToday(day)}
 					{@const inMonth = isCurrentMonth(day)}
 					<!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -1646,15 +1645,6 @@
 						on:dblclick={(e) => openDayView(e, day)}
 					>
 						<span class="tm-cal-day-num" class:tm-cal-day-num--today={today}>{day.date()}</span>
-
-						<!-- Note existence dot -->
-						{#if dayEnabled}
-							<span
-								class="tm-cal-note-dot"
-								class:tm-cal-note-dot--exists={exists}
-								aria-label={exists ? "Note exists" : "No note"}
-							></span>
-						{/if}
 
 						<!-- Reminder chips -->
 						{#each remindersByDay.get(dk) ?? [] as tf (tf.path)}
@@ -2940,21 +2930,6 @@
 		font-weight: 700;
 	}
 	.tm-cal-day-cell--other-month .tm-cal-day-num { color: var(--text-faint); }
-
-	/* Note existence dot */
-	.tm-cal-note-dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		flex-shrink: 0;
-		border: 1.5px solid var(--text-faint);
-		background: transparent;
-		transition: background 80ms ease, border-color 80ms ease;
-	}
-	.tm-cal-note-dot--exists {
-		background: var(--interactive-accent);
-		border-color: var(--interactive-accent);
-	}
 
 	.tm-cal-reminder-dot {
 		width: 6px;
