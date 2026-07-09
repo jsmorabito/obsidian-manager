@@ -1695,9 +1695,11 @@
 								{#each events.slice(0, 3) as evt (evt.uid)}
 									<div
 										class="tm-cal-event-bar"
-										style={evt.sourceColor
-											? `background:color-mix(in srgb, ${evt.sourceColor} 22%, transparent); color:${evt.sourceColor}`
-											: ""}
+										class:tm-cal-event-bar--allday={evt.allDay}
+										class:tm-cal-event-bar--timed={!evt.allDay}
+										style={evt.allDay
+											? (evt.sourceColor ? `background:${evt.sourceColor}; color:var(--text-on-accent)` : "")
+											: (evt.sourceColor ? `--tm-event-dot-color:${evt.sourceColor}` : "")}
 										title={evt.summary}
 									>{evt.summary}</div>
 								{/each}
@@ -2940,17 +2942,27 @@
 		min-width: 0;
 	}
 	.tm-cal-event-bar {
+		--tm-event-dot-color: var(--interactive-accent);
 		font-size: 10px;
 		font-weight: 500;
 		line-height: 1.3;
-		padding: 1px 4px;
-		border-radius: 3px;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		background: color-mix(in srgb, var(--interactive-accent) 22%, transparent);
-		color: var(--interactive-accent);
 		min-width: 0;
+	}
+	/* All-day events: solid fill chip, matching Apple Calendar's month view */
+	.tm-cal-event-bar--allday {
+		padding: 1px 4px;
+		border-radius: 3px;
+		background: var(--tm-event-dot-color, var(--interactive-accent));
+		color: var(--text-on-accent);
+	}
+	/* Timed events: small colored line + plain text, no fill */
+	.tm-cal-event-bar--timed {
+		padding: 1px 4px 1px 6px;
+		border-left: 3px solid var(--tm-event-dot-color, var(--interactive-accent));
+		color: var(--text-normal);
 	}
 	.tm-cal-event-more {
 		font-size: 9px;
