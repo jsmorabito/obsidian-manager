@@ -947,6 +947,7 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 /* ── Layout ── */
 
 .tm-inbox-container {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -1017,33 +1018,14 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 }
 
 .tm-inbox-icon-btn {
+	/* Background, hover state, and sizing all come from Obsidian's .clickable-icon core class. */
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	width: 26px;
-	height: 26px;
-	padding: 0;
-	border: none;
-	border-radius: var(--radius-s);
-	background: transparent;
-	color: var(--text-faint);
-	cursor: pointer;
-	transition: background-color 0.1s ease, color 0.1s ease;
-	box-shadow: none;
-}
-
-.tm-inbox-icon-btn:hover {
-	background-color: var(--background-modifier-hover);
-	color: var(--text-muted);
 }
 
 .tm-inbox-icon-btn.tm-inbox-btn-active {
 	color: var(--interactive-accent);
-}
-
-.tm-inbox-icon-btn svg {
-	width: var(--icon-s);
-	height: var(--icon-s);
 }
 
 /* ── Sections ── */
@@ -1105,6 +1087,11 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 
 .tm-inbox-item:active {
 	background-color: var(--background-modifier-active-hover);
+}
+
+.tm-inbox-item.is-selected {
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 2px 0 0 var(--interactive-accent);
 }
 
 .tm-inbox-item--scheduled {
@@ -1402,6 +1389,22 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 	font-weight: 500;
 }
 
+.tm-inbox-filter-option.tm-inbox-filter-clear {
+	color: var(--text-error);
+}
+
+.tm-inbox-filter-panel {
+	max-width: 260px;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+.tm-inbox-filter-panel .tm-inbox-filter-option {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
 /* Display panel */
 
 .tm-inbox-display-row {
@@ -1654,6 +1657,196 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 
 .tm-tm-inbox-line-flash {
 	animation: tm-tm-inbox-flash 1.4s ease-out forwards !important;
+}
+
+/* ── Inbox tab view (.tm-inbox-tab-*) — sidebar list + file preview ── */
+
+.tm-inbox-tab {
+	display: flex;
+	flex-direction: row;
+	height: 100%;
+	overflow: hidden;
+	padding: 0 !important;
+}
+
+.tm-inbox-tab-sidebar {
+	width: 300px;
+	min-width: 220px;
+	flex-shrink: 0;
+	height: 100%;
+	border-top: 1px solid var(--background-modifier-border);
+	border-right: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+	box-sizing: border-box;
+}
+
+.tm-inbox-tab-main {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	border-top: 1px solid var(--background-modifier-border);
+	box-sizing: border-box;
+}
+
+.tm-inbox-tab-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-4-2);
+	flex: 1;
+	padding: var(--size-4-4) var(--size-4-6);
+	color: var(--text-faint);
+	text-align: center;
+}
+
+.tm-inbox-tab-empty-icon svg {
+	width: var(--icon-l);
+	height: var(--icon-l);
+}
+
+.tm-inbox-tab-empty-title {
+	font-size: var(--font-ui-medium);
+}
+
+.tm-inbox-tab-main-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-3);
+	flex-shrink: 0;
+	padding: var(--size-4-4) var(--size-4-6) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.tm-inbox-tab-main-title-wrap {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-width: 0;
+}
+
+.tm-inbox-tab-main-file-icon {
+	display: flex;
+	align-items: center;
+	color: var(--text-muted);
+	flex-shrink: 0;
+}
+
+.tm-inbox-tab-main-title {
+	font-size: var(--font-ui-large);
+	font-weight: 600;
+	color: var(--text-normal);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tm-inbox-tab-main-tag {
+	flex-shrink: 0;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-accent);
+	background-color: var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding: 1px 6px;
+}
+
+.tm-inbox-tab-main-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	flex-shrink: 0;
+}
+
+.tm-inbox-tab-open-btn {
+	flex-shrink: 0;
+}
+
+.tm-inbox-tab-embed {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* The embedded leaf brings its own .view-header (back/forward nav, title) —
+ * hide it since our .tm-inbox-tab-main-header above already shows the title
+ * and actions. */
+.tm-inbox-tab-embed .view-header {
+	display: none;
+}
+
+.tm-inbox-tab-embed .workspace-leaf,
+.tm-inbox-tab-embed .workspace-leaf-content,
+.tm-inbox-tab-embed .view-content {
+	height: 100%;
+	width: 100%;
+}
+
+/* ── Snooze popover — quick-snooze dropdown anchored to the clock icon ── */
+
+.tm-inbox-snooze-popover {
+	position: fixed;
+	z-index: 200;
+	min-width: 220px;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-l);
+	padding: var(--size-4-2);
+}
+
+.tm-inbox-snooze-popover-title {
+	font-size: var(--font-ui-smaller);
+	font-weight: 600;
+	color: var(--text-faint);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	padding: var(--size-4-1) var(--size-4-2) var(--size-4-2);
+}
+
+.tm-inbox-snooze-popover-list {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.tm-inbox-snooze-popover-btn {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: var(--size-4-2) var(--size-4-3);
+	border: none;
+	border-radius: var(--radius-s);
+	background: transparent;
+	cursor: pointer;
+	transition: background-color 0.1s ease;
+	text-align: left;
+	box-shadow: none;
+	gap: var(--size-4-3);
+}
+
+.tm-inbox-snooze-popover-btn:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.tm-inbox-snooze-popover-label {
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+	font-weight: 450;
+}
+
+.tm-inbox-snooze-popover-sublabel {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	white-space: nowrap;
+}
+
+.tm-inbox-snooze-popover-custom .tm-inbox-snooze-popover-label {
+	color: var(--text-accent);
 }
 
 
@@ -3219,4 +3412,31 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 }
 .tm-reminder-chip--overdue:hover {
 	background: color-mix(in srgb, var(--color-red, #e03e3e) 10%, transparent);
+}
+
+/* ── Toast action button (.tm-toast-action) — an inline "Undo"-style button
+ * inside Obsidian's own core Notice component (see Toast.ts).
+ * Scoped under .notice and !important'd: the Notice component's own button
+ * styling otherwise wins the cascade over a plain single-class selector.
+ * Notices always render dark regardless of the active app theme, so the
+ * button is hardcoded to the dark theme's --background-secondary /
+ * --background-secondary-alt (#262626 / #363636) rather than the
+ * theme-reactive variables, which would go light in light mode. ── */
+
+.notice .tm-toast-action {
+	flex-shrink: 0;
+	margin-left: var(--size-4-2);
+	background-color: #262626 !important;
+	color: #dadada !important;
+	border: none !important;
+	border-radius: var(--radius-s) !important;
+	box-shadow: none !important;
+	padding: var(--size-4-1) var(--size-4-3) !important;
+	font-size: var(--font-ui-small);
+	font-weight: 500;
+	cursor: pointer;
+}
+
+.notice .tm-toast-action:hover {
+	background-color: #363636 !important;
 }

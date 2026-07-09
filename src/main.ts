@@ -45,6 +45,7 @@ import { CalendarService } from "./calendar/calendar-service";
 import { TIME_MANAGER_AGENDA_VIEW, AgendaView } from "./calendar/AgendaView";
 import { TIME_MANAGER_CALENDAR_VIEW, CalendarView } from "./calendar/CalendarView";
 import { TIME_MANAGER_INBOX_VIEW, InboxView } from "./inbox/view";
+import { TIME_MANAGER_INBOX_TAB_VIEW, InboxTabView } from "./inbox/InboxTabView";
 import { registerInboxCommands, addInboxFileMenuItem } from "./inbox/commands";
 import { InboxService } from "./editor/InboxService";
 import { TargetDateService } from "./target-date/target-date-service";
@@ -268,6 +269,7 @@ export default class ManagerPlugin extends Plugin {
 		this.registerView(TIME_MANAGER_SESSIONS_VIEW, (leaf: WorkspaceLeaf) => new SessionsView(leaf, this));
 		this.registerView(VIEW_TYPE_RECENTLY_VIEWED, (leaf: WorkspaceLeaf) => new RecentlyViewedView(leaf, this));
 		this.registerView(TIME_MANAGER_INBOX_VIEW, (leaf: WorkspaceLeaf) => new InboxView(leaf, this));
+		this.registerView(TIME_MANAGER_INBOX_TAB_VIEW, (leaf: WorkspaceLeaf) => new InboxTabView(leaf, this));
 		this.registerView(TIME_MANAGER_AGENDA_VIEW, (leaf: WorkspaceLeaf) => new AgendaView(leaf, this));
 		this.registerView(TIME_MANAGER_CALENDAR_VIEW, (leaf: WorkspaceLeaf) => new CalendarView(leaf, this));
 
@@ -291,6 +293,7 @@ export default class ManagerPlugin extends Plugin {
 		this.addCommand({ id: "open-new-calendar-view", name: "Open new calendar in new tab", callback: () => void this.openNewCalendarView() });
 		this.addCommand({ id: "open-agenda-view", name: "Open agenda panel", callback: () => void this.openAgendaView() });
 		this.addCommand({ id: "open-sessions-view", name: "Open sessions view", callback: () => this.openSessionsView() });
+		this.addCommand({ id: "open-inbox-tab-view", name: "Open inbox in tab", callback: () => void this.openInboxTabView() });
 		this.addCommand({
 			id: "open-recently-viewed",
 			// eslint-disable-next-line obsidianmd/ui/sentence-case
@@ -805,6 +808,15 @@ export default class ManagerPlugin extends Plugin {
 		for (const leaf of this.app.workspace.getLeavesOfType(TIME_MANAGER_INBOX_VIEW)) {
 			if (leaf.view instanceof InboxView) leaf.view.render();
 		}
+	}
+
+	async openInboxTabView(): Promise<void> {
+		const { workspace } = this.app;
+		const existing = workspace.getLeavesOfType(TIME_MANAGER_INBOX_TAB_VIEW);
+		if (existing.length > 0) { workspace.revealLeaf(existing[0]); return; }
+		const leaf = workspace.getLeaf(true);
+		await leaf.setViewState({ type: TIME_MANAGER_INBOX_TAB_VIEW, active: true });
+		workspace.revealLeaf(leaf);
 	}
 
 	private refreshReminderChip(): void {

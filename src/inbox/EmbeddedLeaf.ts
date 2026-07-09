@@ -1,0 +1,45 @@
+import { App, TFile, WorkspaceLeaf } from "obsidian";
+
+/**
+ * A lightweight wrapper around a detached WorkspaceLeaf, letting us embed a
+ * real, live, editable Obsidian markdown view inside our own DOM instead of
+ * a separate workspace pane.
+ *
+ * `WorkspaceLeaf`'s constructor and `containerEl` are not part of the public
+ * API surface, but constructing a leaf outside the root split and attaching
+ * its containerEl to a custom parent is an established technique (used by
+ * the community Daily Notes Editor plugin, and by jsmorabito/obsidian-dashboards).
+ */
+export class EmbeddedLeaf {
+	private leaf: WorkspaceLeaf;
+
+	constructor(private app: App) {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		this.leaf = new (WorkspaceLeaf as any)(this.app);
+	}
+
+	private get containerEl(): HTMLElement {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		return (this.leaf as any).containerEl as HTMLElement;
+	}
+
+	/** Moves this leaf's DOM into `parent`. Safe to call repeatedly (e.g. after a re-render wipes the old wrapper). */
+	attachTo(parent: HTMLElement): void {
+		parent.appendChild(this.containerEl);
+	}
+
+	/** Opens `file` for live editing (not read-only reading view). */
+	async openFile(file: TFile): Promise<void> {
+		await this.leaf.openFile(file, { active: false, state: { mode: "source" } });
+	}
+
+	detach(): void {
+		try {
+			this.leaf.detach();
+		} catch {
+			// Detaching a leaf that was never attached to the workspace tree can
+			// throw in some Obsidian versions; the DOM node is removed regardless.
+		}
+		this.containerEl.remove();
+	}
+}

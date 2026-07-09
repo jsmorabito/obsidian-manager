@@ -1,12 +1,7 @@
 import { App, Modal, moment } from "obsidian";
+import { getSnoozePresets } from "./snooze-presets";
 
 export type SnoozeCallback = (remindAt: string) => void;
-
-interface SnoozePreset {
-	label: string;
-	sublabel: string;
-	getTime: () => string;
-}
 
 export class SnoozeModal extends Modal {
 	private callback: SnoozeCallback;
@@ -21,35 +16,7 @@ export class SnoozeModal extends Modal {
 		contentEl.addClass("tm-inbox-snooze-modal");
 		contentEl.createEl("h3", { text: "Snooze until…", cls: "tm-inbox-snooze-title" });
 
-		const presets: SnoozePreset[] = [
-			{
-				label: "In 1 hour",
-				sublabel: moment().add(1, "hour").format("ddd, D MMM, h:mm a"),
-				getTime: () => moment().add(1, "hour").toISOString(),
-			},
-			{
-				label: "Later today",
-				sublabel: moment().hour(17).minute(0).second(0).format("ddd, D MMM, h:mm a"),
-				getTime: () => moment().hour(17).minute(0).second(0).toISOString(),
-			},
-			{
-				label: "Tomorrow morning",
-				sublabel: moment().add(1, "day").hour(9).minute(0).second(0).format("ddd, D MMM, h:mm a"),
-				getTime: () => moment().add(1, "day").hour(9).minute(0).second(0).toISOString(),
-			},
-			{
-				label: "Next week",
-				sublabel: moment().add(1, "week").startOf("isoWeek").hour(9).minute(0).second(0).format("ddd, D MMM, h:mm a"),
-				getTime: () =>
-					moment().add(1, "week").startOf("isoWeek").hour(9).minute(0).second(0).toISOString(),
-			},
-			{
-				label: "Next month",
-				sublabel: moment().add(1, "month").startOf("month").hour(9).minute(0).second(0).format("ddd, D MMM, 9:00 a"),
-				getTime: () =>
-					moment().add(1, "month").startOf("month").hour(9).minute(0).second(0).toISOString(),
-			},
-		];
+		const presets = getSnoozePresets();
 
 		const list = contentEl.createEl("div", { cls: "tm-inbox-snooze-list" });
 
