@@ -822,25 +822,16 @@
 		e.preventDefault();
 		e.stopPropagation();
 
-		const h = date.month() < 6 ? 1 : 2;
-		const label =
-			gran === "day"       ? date.format("MMM D, YYYY") + (hour !== undefined ? ` at ${formatHour(hour)}` : "")
-			: gran === "week"    ? `W${date.isoWeek()} ${date.year()}`
-			: gran === "month"   ? date.format("MMMM YYYY")
-			: gran === "quarter" ? `Q${date.quarter()} ${date.year()}`
-			: gran === "half-year" ? `H${h} ${date.year()}`
-			: date.format("YYYY");
-
 		const menu = new Menu();
 
 		menu.addItem(item => {
-			item.setTitle(`New note — ${label}`)
+			item.setTitle("New note")
 				.setIcon("file-plus")
 				.onClick(() => void createNoteAt(date, gran, hour));
 		});
 
 		menu.addItem(item => {
-			item.setTitle(`New note from template — ${label}`)
+			item.setTitle("New note from template")
 				.setIcon("layout-template")
 				.onClick(() => {
 					new TemplateSuggestModal(plugin.app, (templateFile) => {
@@ -857,7 +848,7 @@
 		});
 
 		menu.addItem(item => {
-			item.setTitle(`Add existing note — ${label}`)
+			item.setTitle("Add existing note")
 				.setIcon("file-search")
 				.onClick(() => {
 					new ExistingNoteSuggestModal(plugin.app, (file) => {
