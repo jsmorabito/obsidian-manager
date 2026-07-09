@@ -38,6 +38,14 @@ function getDayOfWeekNumericalValue(dayOfWeekName: string): number {
  *
  * varName may contain a hyphen (e.g. "half-year") — it is regex-escaped internally.
  */
+// moment.add() is case-sensitive for "m" (minutes) vs "M" (months) and only
+// recognizes "Q" (uppercase) for quarters — but the template syntax documented
+// in getTemplateVariableReference() uses lowercase for every unit. Remap the
+// ambiguous ones so {{month+1m}} / {{quarter+1q}} do what they say.
+const OFFSET_UNIT_MAP: Record<string, moment.DurationInputArg2> = {
+	y: "y", q: "Q", m: "M", w: "w", d: "d", h: "h", s: "s",
+};
+
 function applyGranularPattern(
 	content: string,
 	varName: string,
@@ -51,8 +59,7 @@ function applyGranularPattern(
 	);
 	return content.replace(pattern, (_, _calc, timeDelta, unit, momentFormat) => {
 		const d = baseDate.clone();
-		// eslint-disable-next-line no-undef -- moment namespace used as type reference only
-		if (timeDelta && unit) d.add(parseInt(timeDelta, 10), unit as moment.DurationInputArg2);
+		if (timeDelta && unit) d.add(parseInt(timeDelta, 10), OFFSET_UNIT_MAP[(unit as string).toLowerCase()]);
 		if (momentFormat) return d.format((momentFormat as string).substring(1).trim());
 		return d.format(defaultFormat);
 	});

@@ -7,3 +7,7 @@ GitHub releases and git tags must **not** use a `v` prefix — use bare version 
 ## Terminology
 
 **granularity** — a calendar/timeline time scale: `day`, `week`, `month`, `year`. Also includes `horizon` and `agenda` as display modes in the CalendarGrid. Used throughout the codebase as the `TargetGranularity` type and in view switching (`switchView`). When the user says "all granularities" they mean all of these views.
+
+## Testing
+
+Unit/integration tests live in `src/__tests__` (Vitest + jsdom + a hand-rolled `obsidian` mock in `src/__tests__/__mocks__/obsidian.ts`). Run with `npm test`. When adding a significant feature (a new logic module, a non-trivial bug fix, a new parsing/formatting/date-math path), add or update tests for it in the same change — don't let coverage drift behind the source. Extend the `obsidian` mock only with what the new code actually imports.
