@@ -189,6 +189,6 @@ export class InboxTabView extends ItemView {
 		const embedEl = container.createEl("div", { cls: "tm-inbox-tab-embed" });
 		if (!this.embeddedLeaf) this.embeddedLeaf = new EmbeddedLeaf(this.app);
 		this.embeddedLeaf.attachTo(embedEl);
-		void this.embeddedLeaf.openFile(item.file);
+		void this.embeddedLeaf.openFile(item.file, item.type === "inline" ? item.line : undefined);
 	}
 }

@@ -1,4 +1,5 @@
-import { App, TFile, WorkspaceLeaf } from "obsidian";
+import { App, MarkdownView, TFile, WorkspaceLeaf } from "obsidian";
+import { scrollAndFlashLine } from "./open-item";
 
 /**
  * A lightweight wrapper around a detached WorkspaceLeaf, letting us embed a
@@ -28,9 +29,20 @@ export class EmbeddedLeaf {
 		parent.appendChild(this.containerEl);
 	}
 
-	/** Opens `file` for live editing (not read-only reading view). */
-	async openFile(file: TFile): Promise<void> {
+	/**
+	 * Opens `file` for live editing (not read-only reading view). If `line` is
+	 * given (an inline #inbox occurrence), places the cursor there and flashes
+	 * it, same as opening the item in a real tab does.
+	 */
+	async openFile(file: TFile, line?: number): Promise<void> {
 		await this.leaf.openFile(file, { active: false, state: { mode: "source" } });
+		if (line === undefined) return;
+
+		// The editor isn't attached synchronously after openFile resolves — wait a tick.
+		await new Promise<void>((r) => window.setTimeout(r, 100));
+		const view = this.leaf.view;
+		if (!(view instanceof MarkdownView)) return;
+		scrollAndFlashLine(view.editor, line);
 	}
 
 	detach(): void {

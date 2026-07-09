@@ -2,6 +2,7 @@
 import { Menu, setIcon } from "obsidian";
 import type TimeManagerPlugin from "../main";
 import { SnoozeModal } from "./SnoozeModal";
+import { openInboxItem } from "./open-item";
 import type { TaggedInboxItem } from "../editor/InboxService";
 
 /**
@@ -253,6 +254,12 @@ export class InboxListPanel {
 	private openItemMenu(e: MouseEvent, item: TaggedInboxItem): void {
 		const menu = new Menu();
 		const isRead = this.isRead(item);
+
+		menu.addItem((mi) => {
+			mi.setTitle("Open in new tab");
+			mi.setIcon("square-arrow-out-up-right");
+			mi.onClick(() => void openInboxItem(this.app, item, true));
+		});
 
 		menu.addItem((mi) => {
 			mi.setTitle(isRead ? "Mark as unread" : "Mark as read");
