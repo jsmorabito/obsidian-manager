@@ -56,12 +56,12 @@ export class ReminderModal extends Modal {
 			},
 		];
 
-		const list = contentEl.createEl("div", { cls: "tm-inbox-snooze-list" });
+		const list = contentEl.createDiv({ cls: "tm-inbox-snooze-list" });
 
 		for (const preset of presets) {
 			const btn = list.createEl("button", { cls: "tm-inbox-snooze-btn" });
-			btn.createEl("span", { text: preset.label, cls: "tm-inbox-snooze-label" });
-			btn.createEl("span", { text: preset.sublabel, cls: "tm-inbox-snooze-sublabel" });
+			btn.createSpan({ text: preset.label, cls: "tm-inbox-snooze-label" });
+			btn.createSpan({ text: preset.sublabel, cls: "tm-inbox-snooze-sublabel" });
 			btn.addEventListener("click", () => {
 				const { date, time } = preset.getDateTime();
 				this.callback(date, time);
@@ -70,7 +70,7 @@ export class ReminderModal extends Modal {
 		}
 
 		const customBtn = list.createEl("button", { cls: "tm-inbox-snooze-btn tm-inbox-snooze-custom" });
-		customBtn.createEl("span", { text: "Custom…", cls: "tm-inbox-snooze-label" });
+		customBtn.createSpan({ text: "Custom…", cls: "tm-inbox-snooze-label" });
 		customBtn.addEventListener("click", () => {
 			this.close();
 			new CustomReminderModal(this.app, this.callback).open();
@@ -95,7 +95,7 @@ class CustomReminderModal extends Modal {
 		contentEl.addClass("tm-inbox-snooze-modal");
 		contentEl.createEl("h3", { text: "Remind me…", cls: "tm-inbox-snooze-title" });
 
-		const fields = contentEl.createEl("div", { cls: "tm-inbox-custom-fields" });
+		const fields = contentEl.createDiv({ cls: "tm-inbox-custom-fields" });
 
 		const dateLabel = fields.createEl("label", { text: "Date", cls: "tm-inbox-field-label" });
 		const dateInput = dateLabel.createEl("input");
@@ -107,7 +107,7 @@ class CustomReminderModal extends Modal {
 		timeInput.type = "time";
 		timeInput.value = "09:00";
 
-		const footer = contentEl.createEl("div", { cls: "tm-inbox-modal-footer" });
+		const footer = contentEl.createDiv({ cls: "tm-inbox-modal-footer" });
 		const confirmBtn = footer.createEl("button", { text: "Set reminder", cls: "mod-cta" });
 		confirmBtn.addEventListener("click", () => {
 			if (!dateInput.value) return;

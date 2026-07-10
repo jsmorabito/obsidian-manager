@@ -15,13 +15,12 @@ export class EmbeddedLeaf {
 	private leaf: WorkspaceLeaf;
 
 	constructor(private app: App) {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		this.leaf = new (WorkspaceLeaf as any)(this.app);
+		const LeafCtor = WorkspaceLeaf as unknown as new (app: App) => WorkspaceLeaf;
+		this.leaf = new LeafCtor(this.app);
 	}
 
 	private get containerEl(): HTMLElement {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		return (this.leaf as any).containerEl as HTMLElement;
+		return (this.leaf as unknown as { containerEl: HTMLElement }).containerEl;
 	}
 
 	/** Moves this leaf's DOM into `parent`. Safe to call repeatedly (e.g. after a re-render wipes the old wrapper). */

@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/ui/sentence-case */
 import { App, Modal, Notice, Setting, moment } from "obsidian";
 import { openPeriodicNote } from "../../periodic/api";
 import { granularities, displayConfigs, type Granularity } from "../../periodic/types";
@@ -31,7 +30,7 @@ export default class OpenPeriodicNoteModal extends Modal {
 
 		if (enabledGranularities.length === 0) {
 			contentEl.createEl("p", {
-				text: "No periodic note granularities are enabled. Enable at least one in Settings.",
+				text: "No periodic note granularities are enabled. Enable at least one in settings.",
 			});
 			return;
 		}
@@ -71,7 +70,7 @@ export default class OpenPeriodicNoteModal extends Modal {
 				.setName("Date")
 				.setDesc(buildPreview())
 				.addText((text) => {
-					text.setPlaceholder("today, next friday, last month…");
+					text.setPlaceholder("Today, next friday, last month…");
 					text.onChange((value) => {
 						dateInput = value;
 						previewEl.setText(buildPreview());

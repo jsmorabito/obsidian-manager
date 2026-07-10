@@ -99,9 +99,9 @@ export function createPeriodicTriggerProvider(
 
 		renderItem(item: TriggerItem, el: HTMLElement): void {
 			const row = el.createDiv({ cls: "tt-trigger-item" });
-			row.createEl("span", { text: item.title, cls: "suggestion-title" });
+			row.createSpan({ text: item.title, cls: "suggestion-title" });
 			if (item.subtitle) {
-				row.createEl("span", { text: item.subtitle, cls: "suggestion-note" });
+				row.createSpan({ text: item.subtitle, cls: "suggestion-note" });
 			}
 		},
 

@@ -46,9 +46,9 @@ export class TargetPreviewPopover {
 		// Header row: title + close button
 		const header = this._el.createDiv({ cls: "tm-target-preview-header" });
 		const titleWrap = header.createDiv({ cls: "tm-target-preview-title-wrap" });
-		const fileIcon = titleWrap.createEl("span", { cls: "tm-target-preview-file-icon" });
+		const fileIcon = titleWrap.createSpan({ cls: "tm-target-preview-file-icon" });
 		setIcon(fileIcon, "file-text");
-		titleWrap.createEl("span", {
+		titleWrap.createSpan({
 			text: file.basename,
 			cls: "tm-target-preview-title",
 		});
@@ -61,7 +61,7 @@ export class TargetPreviewPopover {
 		closeBtn.addEventListener("click", () => this._dismiss());
 
 		// Date badge
-		const dateBadge = this._el.createEl("span", {
+		const dateBadge = this._el.createSpan({
 			text: labelTargetDate(target.raw, target.granularity),
 			cls: "tm-target-preview-date",
 		});
@@ -85,7 +85,7 @@ export class TargetPreviewPopover {
 				this._component
 			);
 		}).catch(() => {
-			previewEl.createEl("span", { text: "Could not load content.", cls: "tm-target-preview-empty" });
+			previewEl.createSpan({ text: "Could not load content.", cls: "tm-target-preview-empty" });
 		});
 
 		// Footer: Open button
@@ -109,7 +109,7 @@ export class TargetPreviewPopover {
 			}
 		};
 		// Delay so the triggering click doesn't immediately close the popover.
-		setTimeout(() => {
+		window.setTimeout(() => {
 			document.addEventListener("mousedown", this._outsideClickHandler, { capture: true });
 		}, 0);
 

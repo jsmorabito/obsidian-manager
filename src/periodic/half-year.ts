@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 
 export function halfOf(date: Moment): 1 | 2 {

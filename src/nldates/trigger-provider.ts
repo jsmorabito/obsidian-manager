@@ -49,7 +49,7 @@ export function createDateTriggerProvider(dateSuggest: DateSuggest): TriggerProv
 		},
 
 		renderItem(item: TriggerItem, el: HTMLElement): void {
-			el.createEl("span", { text: item.title, cls: "suggestion-title" });
+			el.createSpan({ text: item.title, cls: "suggestion-title" });
 		},
 
 		selectItem(

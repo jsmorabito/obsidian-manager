@@ -6,7 +6,6 @@
 // detached "hover popover" container inside the host view. Modifying this file
 // without testing in Obsidian is risky — keep the original behavior unless you
 // have a specific bug to fix.
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-deprecated, obsidianmd/no-static-styles-assignment, no-prototype-builtins, @typescript-eslint/unbound-method, @typescript-eslint/no-unnecessary-type-assertion, no-restricted-globals, no-undef */
 import {
 	Component,
 	HoverPopover,
@@ -58,12 +57,12 @@ export function isDailyNoteLeaf(leaf: WorkspaceLeaf): boolean {
 	return leaf.containerEl.matches(".tm-editor.tm-leaf-view .workspace-leaf");
 }
 
-function nosuper<T>(base: new (...args: any[]) => T): new () => T {
-	const derived = function () {
-		return Object.setPrototypeOf(new Component(), new.target.prototype);
+function nosuper<T>(base: new (...args: never[]) => T): new () => T {
+	const derived: unknown = function () {
+		return Object.setPrototypeOf(new Component(), (new.target as unknown as { prototype: object }).prototype) as T;
 	};
-	derived.prototype = base.prototype;
-	return Object.setPrototypeOf(derived, base);
+	(derived as { prototype: unknown }).prototype = (base as unknown as { prototype: unknown }).prototype;
+	return Object.setPrototypeOf(derived, base) as new () => T;
 }
 
 export function spawnLeafView(
@@ -99,7 +98,7 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 	titleEl!: HTMLElement;
 	containerEl!: HTMLElement;
 
-	oldPopover: DailyNoteEditor | null | undefined = this.parent?.DailyNoteEditor;
+	oldPopover: DailyNoteEditor | null | undefined = (this.parent as DailyNoteEditorParent | null)?.DailyNoteEditor;
 	document: Document;
 
 	id = genId(8);
@@ -148,8 +147,7 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 
 	static activeWindows(): Window[] {
 		const windows: Window[] = [window];
-		// @ts-ignore — unofficial workspace.floatingSplit
-		const { floatingSplit } = app.workspace;
+		const { floatingSplit } = window.app.workspace;
 		if (floatingSplit) {
 			for (const split of floatingSplit.children) {
 				if (split.win) windows.push(split.win);
@@ -159,9 +157,7 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 	}
 
 	static containerForDocument(plugin: TimeManagerPlugin, doc: Document) {
-		// @ts-ignore — unofficial floatingSplit shape
 		if (doc !== document && plugin.app.workspace.floatingSplit) {
-			// @ts-ignore
 			for (const container of plugin.app.workspace.floatingSplit.children) {
 				if (container.doc === doc) return container;
 			}
@@ -170,7 +166,7 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 	}
 
 	static activePopovers(): DailyNoteEditor[] {
-		return this.activeWindows().flatMap(this.popoversForWindow);
+		return this.activeWindows().flatMap((win) => this.popoversForWindow(win));
 	}
 
 	static popoversForWindow(win?: Window): DailyNoteEditor[] {
@@ -232,8 +228,7 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 	}
 
 	setInitialDimensions() {
-		this.hoverEl.style.height = "auto";
-		this.hoverEl.style.width = "100%";
+		this.hoverEl.setCssStyles({ height: "auto", width: "100%" });
 	}
 
 	transition() {
@@ -279,15 +274,15 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 	onload(): void {
 		super.onload();
 		this.registerEvent(
-			this.plugin.app.workspace.on("layout-change", this.updateLeaves, this)
+			this.plugin.app.workspace.on("layout-change", () => this.updateLeaves())
 		);
 		this.registerEvent(
 			this.plugin.app.workspace.on("layout-change", () => {
-				// @ts-ignore — unofficial children/replaceChild on WorkspaceSplit
-				this.rootSplit.children?.forEach((item: any, index: any) => {
+				this.rootSplit.children?.forEach((item, index) => {
 					if (item instanceof WorkspaceTabs) {
-						// @ts-ignore
-						this.rootSplit.replaceChild(index, (item as any).children[0]);
+						// `children` on WorkspaceTabs isn't part of the public API.
+						const tabsChildren = (item as unknown as { children: unknown[] }).children;
+						this.rootSplit.replaceChild(index, tabsChildren[0]);
 					}
 				});
 			})
@@ -295,7 +290,7 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 	}
 
 	onShow() {
-		setTimeout(() => (this.waitTime = POPOVER_CLOSE_DELAY_MS), POPOVER_CLOSE_DELAY_MS);
+		window.setTimeout(() => (this.waitTime = POPOVER_CLOSE_DELAY_MS), POPOVER_CLOSE_DELAY_MS);
 
 		this.oldPopover?.hide();
 		this.oldPopover = null;
@@ -445,8 +440,9 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 
 		if (leafViewType === "image") {
 			if (
-				this.parent?.hasOwnProperty("editorEl") &&
-				(this.parent as unknown as MarkdownEditView).editorEl!.hasClass("is-live-preview")
+				this.parent &&
+				Object.prototype.hasOwnProperty.call(this.parent, "editorEl") &&
+				(this.parent as unknown as MarkdownEditView).editorEl.hasClass("is-live-preview")
 			) {
 				this.waitTime = 3000;
 			}
@@ -462,13 +458,15 @@ export class DailyNoteEditor extends nosuper(HoverPopover) {
 		}
 		if (state.state?.mode === "source") {
 			this.whenShown(() => {
-				if (requireApiVersion("1.0")) (leaf?.view as any)?.editMode?.reinit?.();
+				if (requireApiVersion("1.0")) {
+					(leaf?.view as unknown as { editMode?: { reinit?: () => void } })?.editMode?.reinit?.();
+				}
 				leaf?.view?.setEphemeralState(state.eState);
 			});
 		}
 	}
 
-	whenShown(callback: () => any) {
+	whenShown(callback: () => void) {
 		if (this.detaching) return;
 		const existingCallback = this.onShowCallback;
 		this.onShowCallback = () => {

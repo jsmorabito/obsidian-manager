@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/ui/sentence-case */
 import { Notice, ObsidianProtocolData, moment } from "obsidian";
 import { openPeriodicNote } from "../periodic/api";
 import { parseTruthy } from "./utils";
@@ -38,6 +37,6 @@ export async function handleNLDateURI(
 		});
 	} catch (err) {
 		console.error("[time-tools/nldates] URI handler error:", err);
-		new Notice("[time-tools] Could not open the periodic note for that date.");
+		new Notice("[time-tools] could not open the periodic note for that date.");
 	}
 }

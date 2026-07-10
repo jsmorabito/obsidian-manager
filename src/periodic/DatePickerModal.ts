@@ -30,7 +30,7 @@ export class DatePickerModal extends Modal {
 					if (e.key === "Enter") this.submit();
 				});
 				// Auto-focus.
-				setTimeout(() => t.inputEl.focus(), 50);
+				window.setTimeout(() => t.inputEl.focus(), 50);
 			});
 
 		new Setting(contentEl).addButton((btn) =>

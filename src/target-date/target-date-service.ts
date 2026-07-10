@@ -13,7 +13,7 @@
 
 import { moment } from "obsidian";
 import type { App, TFile } from "obsidian";
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 import type { TargetGranularity, TargetDate, ResolvedTargetDate } from "./types";
 

@@ -9,7 +9,7 @@ export function scrollAndFlashLine(editor: Editor, line: number): void {
 	const cmView = (editor as unknown as { cm: { state: { doc: { line(n: number): { from: number } } }; domAtPos(pos: number): { node: Node } } }).cm;
 	const lineFrom = cmView.state.doc.line(line + 1).from;
 	const { node } = cmView.domAtPos(lineFrom);
-	const lineEl = (node instanceof HTMLElement ? node : node.parentElement)?.closest(".cm-line") as HTMLElement | null;
+	const lineEl = (node.instanceOf(HTMLElement) ? node : node.parentElement)?.closest(".cm-line") as HTMLElement | null;
 	if (lineEl) {
 		lineEl.classList.add("tm-tm-inbox-line-flash");
 		window.setTimeout(() => lineEl.classList.remove("tm-tm-inbox-line-flash"), 1500);

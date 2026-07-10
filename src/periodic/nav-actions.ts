@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
-/* eslint-disable @typescript-eslint/no-deprecated, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
 /**
  * Periodic-note leaf navigation.
  *
@@ -12,8 +10,8 @@
  * Controls are removed automatically when the active file changes to a
  * non-periodic note.
  */
-import { setIcon, TFile, WorkspaceLeaf } from "obsidian";
-// eslint-disable-next-line no-restricted-imports
+import { MarkdownView, setIcon, TFile, WorkspaceLeaf } from "obsidian";
+ 
 import type moment from "moment";
 import type TimeManagerPlugin from "../main";
 import { findInPeriodic, openPeriodicNote } from "./api";
@@ -70,9 +68,9 @@ export function registerLeafNavActions(plugin: TimeManagerPlugin): void {
 		dateLbl.setAttribute("aria-label", "Jump to date…");
 		dateLbl.createSpan({ text: file.basename });
 		dateLbl.addEventListener("click", () => {
-			new DatePickerModal(plugin.app, granularity, (picked) =>
-				openPeriodicNote(plugin, granularity, picked).catch(console.error)
-			).open();
+			new DatePickerModal(plugin.app, granularity, (picked) => {
+				openPeriodicNote(plugin, granularity, picked).catch(console.error);
+			}).open();
 		});
 
 		// → Next button
@@ -91,7 +89,7 @@ export function registerLeafNavActions(plugin: TimeManagerPlugin): void {
 			actionsEl.ownerDocument,
 			"Open in time notes view",
 			"gallery-vertical",
-			() => plugin.openEditorViewAndScrollTo(file, granularity).catch(console.error)
+			() => { plugin.openEditorViewAndScrollTo(file, granularity).catch(console.error); }
 		);
 
 		// Prepend so they sit at the left of the existing action icons.
@@ -117,16 +115,14 @@ export function registerLeafNavActions(plugin: TimeManagerPlugin): void {
 	}
 
 	const onLeafChange = () => {
-		const leaf = plugin.app.workspace.activeLeaf;
-		if (!leaf) { removeInjected(); return; }
-
 		// Only inject into standard markdown leaves — not our own custom views.
-		if (leaf.view?.getViewType() !== "markdown") { removeInjected(); return; }
+		const view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view) { removeInjected(); return; }
 
-		const file = (leaf.view as any).file as TFile | null;
+		const file = view.file;
 		if (!file) { removeInjected(); return; }
 
-		injectNavButtons(leaf, file);
+		injectNavButtons(view.leaf, file);
 	};
 
 	plugin.registerEvent(plugin.app.workspace.on("active-leaf-change", onLeafChange));

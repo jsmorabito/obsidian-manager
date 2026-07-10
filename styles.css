@@ -3367,6 +3367,28 @@ body.tm-hide-backlinks .tm-note-view .embedded-backlinks {
 	display: block;
 }
 
+.chain-rule-reset-btn {
+	margin-left: 8px;
+}
+
+.tm-note-name-input-field {
+	width: 100%;
+	margin: 8px 0 16px;
+	font-size: var(--font-ui-medium);
+	padding: 6px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	box-sizing: border-box;
+}
+
+.tm-note-name-btns {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
 /* ── Reminder chip (view header) ─────────────────────────────────────────── */
 .tm-reminder-chip {
 	display: inline-flex;

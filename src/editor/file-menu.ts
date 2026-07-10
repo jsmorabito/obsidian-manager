@@ -144,7 +144,7 @@ function addShowInCalendarMenuItem(
 					leaf = workspace.getLeaf(true);
 					await leaf.setViewState({ type: TIME_MANAGER_CALENDAR_VIEW });
 				}
-				workspace.revealLeaf(leaf);
+				await workspace.revealLeaf(leaf);
 				if (leaf.view instanceof CalendarView) {
 					leaf.view.navigateToDate(dateStr);
 				}

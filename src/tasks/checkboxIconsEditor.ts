@@ -112,11 +112,11 @@ export function checkboxIconsEditorExtension(plugin: TaskToolsPlugin) {
 			decorate: (add, from, to, match, view) => {
 				if (!this.shouldRender(view, from, to)) return;
 
-				const mark           = match[4]!;
-				const bulletWithSp   = match[2]!;   // e.g. "- "
-				const checkboxWithSp = match[3]!;   // e.g. "[x] "
+				const mark           = match[4];
+				const bulletWithSp   = match[2];   // e.g. "- "
+				const checkboxWithSp = match[3];   // e.g. "[x] "
 				const checkbox       = checkboxWithSp.trim(); // "[x]"
-				const indent         = match[1]!.length;
+				const indent         = match[1].length;
 				const isLP           = view.state.field(editorLivePreviewField);
 
 				if (isLP) {
@@ -172,7 +172,8 @@ export function checkboxIconsEditorExtension(plugin: TaskToolsPlugin) {
 		private shouldRender(view: EditorView, from: number, to: number): boolean {
 			// Skip codeblocks and frontmatter
 			const syntaxNode = syntaxTree(view.state).resolveInner(from + 1);
-			const nodeProps = syntaxNode.type.prop(tokenClassNodeProp) as string | undefined;
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion -- eslint's type-aware linting resolves tokenClassNodeProp's generic to `error`/`{}` here, but `tsc` requires this cast (see NodeType.prop's declared return type); without it `tsc -noEmit` fails on nodeProps.split below
+		const nodeProps = syntaxNode.type.prop(tokenClassNodeProp) as string | undefined;
 			if (nodeProps) {
 				const props = nodeProps.split(" ");
 				if (props.includes("hmd-codeblock") || props.includes("hmd-frontmatter")) {
@@ -224,14 +225,14 @@ export function checkboxIconsEditorExtension(plugin: TaskToolsPlugin) {
 				const match = TASK_LINE_RE.exec(line.text);
 				if (!match) return false; // non-task line — let Obsidian handle all
 
-				const mark = match[4]!;
+				const mark = match[4];
 				const statuses = plugin.taskSettings.checkboxStatuses ?? DEFAULT_CHECKBOX_STATUSES;
 				const marks = statuses.map((s) => s.mark);
 				const idx = marks.indexOf(mark);
 				const next = marks[(idx + 1) % marks.length] ?? marks[0] ?? " ";
 
-				const checkboxFrom = line.from + match[1]!.length + match[2]!.length;
-				changes.push({ from: checkboxFrom, to: checkboxFrom + match[3]!.length, insert: `[${next}]` });
+				const checkboxFrom = line.from + match[1].length + match[2].length;
+				changes.push({ from: checkboxFrom, to: checkboxFrom + match[3].length, insert: `[${next}]` });
 			}
 
 			view.dispatch({ changes, annotations: checkboxCycleAnnotation.of("cycle") });

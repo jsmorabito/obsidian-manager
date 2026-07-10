@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/ui/sentence-case */
 import { MarkdownView, Plugin } from "obsidian";
 import { generateMarkdownLink, getDateLinkAlias, getSelectedText, adjustCursor } from "./utils";
 import type { NLDatesModule } from "./module";
@@ -73,7 +72,7 @@ export function registerNLDateCommands(plugin: Plugin, nld: NLDatesModule): void
 
 	plugin.addCommand({
 		id: "nld-parse-as-link",
-		name: "Natural language date: parse selection as markdown link",
+		name: "Natural language date: parse selection as Markdown link",
 		callback: () => runParseCommand(nld, "link"),
 	});
 

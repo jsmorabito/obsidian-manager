@@ -1,5 +1,5 @@
  
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 import { Platform } from "obsidian";
 import { HUMANIZE_FORMAT } from "../periodic/constants";

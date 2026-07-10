@@ -1,5 +1,3 @@
- 
-/* eslint-disable obsidianmd/ui/sentence-case */
 /**
  * Timeline sidebar view.
  *
@@ -12,7 +10,7 @@
  * The row whose granularity matches the active file is visually highlighted.
  */
 import { ItemView, TFile, WorkspaceLeaf, setIcon } from "obsidian";
-// eslint-disable-next-line no-restricted-imports
+ 
 import type moment from "moment";
 import type TimeManagerPlugin from "../main";
 import { findInPeriodic, getPeriodicNote, openPeriodicNote } from "./api";
@@ -131,7 +129,7 @@ export class TimelineView extends ItemView {
 		if (!anyEnabled) {
 			 
 			contentEl.createEl("p", {
-				text: "No periodic note types are enabled. Enable at least one in Settings.",
+				text: "No periodic note types are enabled. Enable at least one in settings.",
 				cls: "tm-timeline-empty",
 			});
 		}
@@ -156,14 +154,14 @@ export class TimelineView extends ItemView {
 		heading.setText(isToday ? "Events — Today" : `Events — ${date.format("MMM D")}`);
 
 		const listEl = section.createDiv({ cls: "tm-events-list" });
-		listEl.createEl("span", { text: "Loading…", cls: "tm-events-loading" });
+		listEl.createSpan({ text: "Loading…", cls: "tm-events-loading" });
 
 		this.plugin.calendarService
 			.getEventsForDate(date)
 			.then((events) => {
 				listEl.empty();
 				if (events.length === 0) {
-					listEl.createEl("span", {
+					listEl.createSpan({
 						text: "No events",
 						cls: "tm-events-empty",
 					});
@@ -175,7 +173,7 @@ export class TimelineView extends ItemView {
 			})
 			.catch((err) => {
 				listEl.empty();
-				listEl.createEl("span", {
+				listEl.createSpan({
 					text: "Failed to load events",
 					cls: "tm-events-error",
 				});
@@ -187,13 +185,13 @@ export class TimelineView extends ItemView {
 		const row = container.createDiv({ cls: "tm-event-row" });
 
 		// Colour dot
-		const dot = row.createEl("span", { cls: "tm-event-dot" });
+		const dot = row.createSpan({ cls: "tm-event-dot" });
 		if (evt.sourceColor) {
 			dot.style.backgroundColor = evt.sourceColor;
 		}
 
 		const body = row.createDiv({ cls: "tm-event-body" });
-		body.createEl("span", { text: evt.summary, cls: "tm-event-summary" });
+		body.createSpan({ text: evt.summary, cls: "tm-event-summary" });
 
 		const timeText = evt.allDay
 			? "All day"
@@ -201,7 +199,7 @@ export class TimelineView extends ItemView {
 			? `${evt.start.format("HH:mm")}–${evt.end.format("HH:mm")}`
 			: evt.start.format("HH:mm");
 
-		body.createEl("span", { text: timeText, cls: "tm-event-time" });
+		body.createSpan({ text: timeText, cls: "tm-event-time" });
 	}
 
 	private renderNavLink(

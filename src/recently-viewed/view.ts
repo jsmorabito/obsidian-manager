@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { ItemView, TFile, WorkspaceLeaf, moment, setIcon } from "obsidian";
 import type TimeManagerPlugin from "../main";
 import type { RecentFileEntry } from "./types";
@@ -18,8 +17,7 @@ export class RecentlyViewedView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		// eslint-disable-next-line obsidianmd/ui/sentence-case
-	return "Recently Viewed";
+		return "Recently viewed";
 	}
 
 	getIcon(): string {
@@ -40,16 +38,15 @@ export class RecentlyViewedView extends ItemView {
 		container.addClass("rv-container");
 
 		// ── Header ──────────────────────────────────────────────────────────────
-		const header = container.createEl("div", { cls: "rv-header" });
-		const titleRow = header.createEl("div", { cls: "rv-title-row" });
+		const header = container.createDiv({ cls: "rv-header" });
+		const titleRow = header.createDiv({ cls: "rv-title-row" });
 
-		const headerIcon = titleRow.createEl("div", { cls: "rv-header-icon" });
+		const headerIcon = titleRow.createDiv({ cls: "rv-header-icon" });
 		setIcon(headerIcon, "clock");
 
-		// eslint-disable-next-line obsidianmd/ui/sentence-case
-		titleRow.createEl("span", { text: "Recently Viewed", cls: "rv-title" });
-		titleRow
-			.createEl("span", { cls: "rv-badge" })
+		 
+		titleRow.createSpan({ text: "Recently Viewed", cls: "rv-title" });
+		titleRow.createSpan({ cls: "rv-badge" })
 			.setText(String(this.plugin.settings.time.recentFiles.length));
 
 		const clearBtn = header.createEl("button", {
@@ -66,12 +63,12 @@ export class RecentlyViewedView extends ItemView {
 		});
 
 		// ── List ────────────────────────────────────────────────────────────────
-		const list = container.createEl("div", { cls: "rv-list" });
+		const list = container.createDiv({ cls: "rv-list" });
 		const files = this.plugin.settings.time.recentFiles;
 
 		if (files.length === 0) {
-			const empty = list.createEl("div", { cls: "rv-empty" });
-			const emptyIcon = empty.createEl("div", { cls: "rv-empty-icon" });
+			const empty = list.createDiv({ cls: "rv-empty" });
+			const emptyIcon = empty.createDiv({ cls: "rv-empty-icon" });
 			setIcon(emptyIcon, "file-clock");
 			empty.createEl("p", { text: "No recently viewed files yet." });
 			empty.createEl("p", {
@@ -82,14 +79,17 @@ export class RecentlyViewedView extends ItemView {
 		}
 
 		files.forEach((entry: RecentFileEntry, index: number) => {
-			const item = list.createEl("div", { cls: "rv-item" });
+			const item = list.createDiv({ cls: "rv-item" });
 			item.setAttribute("data-path", entry.path);
 
-			item.createEl("span", { cls: "rv-index", text: String(index + 1) });
+			item.createSpan({ cls: "rv-index", text: String(index + 1) });
 
 			// File icon — respect Iconic plugin if installed.
-			const fileIcon = item.createEl("div", { cls: "rv-file-icon" });
-			const iconic = (this.app as any).plugins?.plugins?.["iconic"];
+			const fileIcon = item.createDiv({ cls: "rv-file-icon" });
+			// "iconic" is a third-party community plugin with no published types.
+			const iconic = this.app.plugins?.plugins?.["iconic"] as
+				| { getFileItem?: (path: string) => { icon?: string; color?: string } | undefined }
+				| undefined;
 			if (iconic && typeof iconic.getFileItem === "function") {
 				const fi = iconic.getFileItem(entry.path);
 				if (fi?.icon) {
@@ -103,22 +103,22 @@ export class RecentlyViewedView extends ItemView {
 			}
 
 			// Name + path
-			const info = item.createEl("div", { cls: "rv-info" });
+			const info = item.createDiv({ cls: "rv-info" });
 			const displayName =
 				entry.basename +
 				(entry.extension && entry.extension !== "md" ? "." + entry.extension : "");
-			info.createEl("div", { cls: "rv-name", text: displayName });
+			info.createDiv({ cls: "rv-name", text: displayName });
 
 			if (this.plugin.settings.time.rvShowPath) {
 				const folder = entry.path.includes("/")
 					? entry.path.substring(0, entry.path.lastIndexOf("/"))
 					: "/";
-				info.createEl("div", { cls: "rv-path", text: folder });
+				info.createDiv({ cls: "rv-path", text: folder });
 			}
 
 			// Timestamp
 			if (this.plugin.settings.time.rvShowTimestamp) {
-				item.createEl("div", {
+				item.createDiv({
 					cls: "rv-time",
 					text: formatRelativeTime(entry.viewedAt),
 				});

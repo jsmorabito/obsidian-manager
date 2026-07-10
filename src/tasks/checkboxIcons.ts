@@ -59,7 +59,7 @@ export function buildIconEl(
 	statuses: CheckboxStatus[],
 	extraCls?: string
 ): HTMLElement {
-	const el = createEl("span", {
+	const el = createSpan({
 		cls: ["tt-checkbox-icon", ...(extraCls ? [extraCls] : [])].join(" "),
 		attr: {
 			"data-task-state": mark,
@@ -73,6 +73,7 @@ export function buildIconEl(
 
 	const svg = getSvgForMark(mark);
 	if (svg) {
+		// eslint-disable-next-line no-unsanitized/property -- svg is a hardcoded literal from STATUS_SVGS, not user-controlled
 		el.innerHTML = svg;
 	} else {
 		el.setText(status?.icon || mark);
@@ -95,6 +96,7 @@ export function applyCheckboxIcons(
 		if (item.querySelector(".tt-checkbox-icon") || seen.has(item)) continue;
 		seen.add(item);
 
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- querySelector returns Element | null; tsc requires this narrowing even though eslint's type-aware pass considers it redundant
 		const checkbox = item.querySelector(
 			".task-list-item-checkbox"
 		) as HTMLInputElement | null;
@@ -157,6 +159,7 @@ class CheckboxIcon extends MarkdownRenderChild {
 
 		const svg = getSvgForMark(this.mark);
 		if (svg) {
+			// eslint-disable-next-line no-unsanitized/property -- svg is a hardcoded literal from STATUS_SVGS, not user-controlled
 			this.iconEl.innerHTML = svg;
 		} else {
 			this.iconEl.innerHTML = "";

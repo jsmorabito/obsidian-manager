@@ -2,7 +2,7 @@
 // Find periodic notes by scanning the vault. We deliberately avoid building a
 // long-lived metadata cache for the MVP — `getMarkdownFiles()` is cheap enough
 // and we recompute per query. A real cache is tracked in deferred features.
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 import { App, TFile } from "obsidian";
 import { DEFAULT_FORMAT } from "./constants";

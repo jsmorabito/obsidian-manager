@@ -1,5 +1,5 @@
  
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 import { App, TFile } from "obsidian";
 import { applyTemplateTransformations, getTemplateContents } from "../utils/template";

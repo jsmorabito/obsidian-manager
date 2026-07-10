@@ -15,7 +15,7 @@ import ICAL from "ical.js";
 
 import { moment } from "obsidian";
 import type { CalendarEvent } from "./types";
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 
 // ── Public API ─────────────────────────────────────────────────────────────────

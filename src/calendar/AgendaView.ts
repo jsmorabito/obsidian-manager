@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 /**
  * Periodic Note Panel (AgendaView)
  *
@@ -94,12 +93,14 @@ export class AgendaView extends ItemView {
 		);
 		// When the multi-note editor scrolls to a new note, pin that file so the
 		// AgendaView tracks the scroll position even though the leaf hasn't changed.
+		const workspace = this.app.workspace as unknown as {
+			on(name: "time-tools:focused-note", callback: (file: TFile) => void): EventRef;
+		};
 		this.registerEvent(
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			((this.app.workspace as any).on("time-tools:focused-note", (file: TFile) => {
+			workspace.on("time-tools:focused-note", (file) => {
 				this._pinnedFile = file;
 				this.render();
-			}) as EventRef)
+			})
 		);
 		this.registerEvent(
 			this.app.vault.on("create", () => this.refreshImmediate())
@@ -152,7 +153,7 @@ export class AgendaView extends ItemView {
 		// ── Period header ──────────────────────────────────────────────────────
 		const header = contentEl.createDiv({ cls: "tm-pnp-header" });
 
-		const badge = header.createEl("span", {
+		const badge = header.createSpan({
 			text: cfg.periodicity.charAt(0).toUpperCase() + cfg.periodicity.slice(1),
 			cls: "tm-pnp-badge",
 		});
@@ -161,7 +162,7 @@ export class AgendaView extends ItemView {
 			badge.addClass("tm-pnp-badge--today");
 		}
 
-		header.createEl("div", {
+		header.createDiv({
 			text: periodLabel,
 			cls: "tm-pnp-period-title",
 		});
@@ -185,7 +186,7 @@ export class AgendaView extends ItemView {
 			cls: isOnToday ? "tm-pnp-toolbar-period tm-pnp-toolbar-period--current" : "tm-pnp-toolbar-period",
 			attr: { "aria-label": `Go to current ${cfg.periodicity} (${periodLabelLong})` },
 		});
-		periodBtn.createEl("span", { text: periodLabel });
+		periodBtn.createSpan({ text: periodLabel });
 		periodBtn.addEventListener("click", () => {
 			void openPeriodicNote(this.plugin, granularity, moment());
 		});
@@ -224,14 +225,13 @@ export class AgendaView extends ItemView {
 
 		if (sources.length === 0) {
 			agenda.createEl("p", {
-				// eslint-disable-next-line obsidianmd/ui/sentence-case
-				text: "Add a calendar source in Settings → Calendar to see events here.",
+				text: "Add a calendar source in settings → calendar to see events here.",
 				cls: "tm-pnp-agenda-empty",
 			});
 			return;
 		}
 
-		const loadingEl = agenda.createEl("span", {
+		const loadingEl = agenda.createSpan({
 			text: "Loading events…",
 			cls: "tm-pnp-agenda-loading",
 		});
@@ -241,7 +241,7 @@ export class AgendaView extends ItemView {
 			.then((byDay) => {
 				loadingEl.remove();
 				if (byDay.size === 0) {
-					agenda.createEl("span", {
+					agenda.createSpan({
 						text: "No events this period.",
 						cls: "tm-pnp-agenda-empty",
 					});
@@ -254,7 +254,7 @@ export class AgendaView extends ItemView {
 			})
 			.catch((err) => {
 				loadingEl.remove();
-				agenda.createEl("span", { text: "Failed to load events.", cls: "tm-pnp-agenda-error" });
+				agenda.createSpan({ text: "Failed to load events.", cls: "tm-pnp-agenda-error" });
 				console.error("[time-tools] AgendaView:", err);
 			});
 	}
@@ -327,11 +327,11 @@ export class AgendaView extends ItemView {
 		periodEnd: ReturnType<typeof moment>
 	): void {
 		const svc = this.plugin.targetDateService;
-		if (!svc) { container.createEl("span", { text: "No targets.", cls: "tm-pnp-agenda-empty" }); return; }
+		if (!svc) { container.createSpan({ text: "No targets.", cls: "tm-pnp-agenda-empty" }); return; }
 
 		const targets = svc.getFilesWithTargetInRange(periodStart, periodEnd);
 		if (targets.length === 0) {
-			container.createEl("span", { text: "No targets this period.", cls: "tm-pnp-agenda-empty" });
+			container.createSpan({ text: "No targets this period.", cls: "tm-pnp-agenda-empty" });
 			return;
 		}
 
@@ -340,13 +340,13 @@ export class AgendaView extends ItemView {
 			card.setAttribute("role", "button");
 			card.setAttribute("tabindex", "0");
 			card.setAttribute("title", "Click to preview · click open to open");
-			card.createEl("span", { cls: "tm-pnp-target-stripe", attr: { "aria-hidden": "true" } });
+			card.createSpan({ cls: "tm-pnp-target-stripe", attr: { "aria-hidden": "true" } });
 			const body = card.createDiv({ cls: "tm-pnp-target-body" });
-			body.createEl("span", {
+			body.createSpan({
 				text: file.basename,
 				cls: "tm-pnp-target-title",
 			});
-			body.createEl("span", {
+			body.createSpan({
 				text: labelTargetDate(target.raw, target.granularity),
 				cls: "tm-pnp-target-date",
 			});
@@ -379,12 +379,12 @@ export class AgendaView extends ItemView {
 			const heading = group.createDiv({
 				cls: isToday ? "tm-pnp-day-heading tm-pnp-day-heading--today" : "tm-pnp-day-heading",
 			});
-			heading.createEl("span", {
+			heading.createSpan({
 				text: m.format("ddd D"),
 				cls: "tm-pnp-day-label",
 			});
 			if (isToday) {
-				heading.createEl("span", { text: "Today", cls: "tm-pnp-today-chip" });
+				heading.createSpan({ text: "Today", cls: "tm-pnp-today-chip" });
 			}
 		}
 
@@ -398,7 +398,7 @@ export class AgendaView extends ItemView {
 	private renderEventCard(container: HTMLElement, evt: CalendarEvent): void {
 		const card = container.createDiv({ cls: "tm-pnp-event-card" });
 
-		const stripe = card.createEl("span", { cls: "tm-pnp-event-stripe" });
+		const stripe = card.createSpan({ cls: "tm-pnp-event-stripe" });
 		// Use the source's explicit color if set; otherwise fall back to the
 		// theme accent color via the CSS variable on .tm-pnp-event-stripe.
 		if (evt.sourceColor) {
@@ -406,14 +406,14 @@ export class AgendaView extends ItemView {
 		}
 
 		const body = card.createDiv({ cls: "tm-pnp-event-body" });
-		body.createEl("span", { text: evt.summary, cls: "tm-pnp-event-title" });
+		body.createSpan({ text: evt.summary, cls: "tm-pnp-event-title" });
 
 		const timeText = evt.allDay
 			? "All day"
 			: evt.end
 			? `${evt.start.format("h:mm")}–${evt.end.format("h:mm a")}`
 			: evt.start.format("h:mm a");
-		body.createEl("span", { text: timeText, cls: "tm-pnp-event-time" });
+		body.createSpan({ text: timeText, cls: "tm-pnp-event-time" });
 	}
 
 	// ── Empty state ────────────────────────────────────────────────────────────

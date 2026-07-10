@@ -8,12 +8,12 @@ import type {
 	PluginManifest,
 	TFile,
 	TFolder,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only inside the `declare module "obsidian"` block below, which this rule doesn't see
 	View,
 	WorkspaceItem,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only inside the `declare module "obsidian"` block below, which this rule doesn't see
 	WorkspaceLeaf,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only inside the `declare module "obsidian"` block below, which this rule doesn't see
 	WorkspaceSplit,
 } from "obsidian";
 
@@ -91,9 +91,8 @@ declare module "obsidian" {
 	}
 
 	interface HoverPopover {
-		// `parent` is dynamic at runtime — we cast on use.
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		parent: any;
+		// `parent` is dynamic at runtime — we narrow/cast on use.
+		parent: unknown;
 		targetEl: HTMLElement;
 		hoverEl: HTMLElement;
 		state: PopoverState;

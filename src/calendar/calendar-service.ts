@@ -15,7 +15,7 @@ import { moment, requestUrl } from "obsidian";
 import type TimeManagerPlugin from "../main";
 import { parseICSInRange, isEventOnDate } from "./ics-parser";
 import type { CalendarEvent, CalendarSource } from "./types";
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 
 const TTL_MS = 15 * 60 * 1000; // 15 minutes

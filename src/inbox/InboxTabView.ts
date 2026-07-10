@@ -1,4 +1,4 @@
-/* eslint-disable obsidianmd/ui/sentence-case */
+ 
 import { ItemView, Notice, setIcon, WorkspaceLeaf } from "obsidian";
 import type TimeManagerPlugin from "../main";
 import { InboxListPanel } from "./InboxListPanel";
@@ -47,8 +47,8 @@ export class InboxTabView extends ItemView {
 		root.empty();
 		root.addClass("tm-inbox-tab");
 
-		this.sidebarEl = root.createEl("div", { cls: "tm-inbox-tab-sidebar" });
-		this.mainEl = root.createEl("div", { cls: "tm-inbox-tab-main" });
+		this.sidebarEl = root.createDiv({ cls: "tm-inbox-tab-sidebar" });
+		this.mainEl = root.createDiv({ cls: "tm-inbox-tab-main" });
 
 		this.listPanel = new InboxListPanel({
 			plugin: this.plugin,
@@ -144,8 +144,8 @@ export class InboxTabView extends ItemView {
 		container.empty();
 
 		if (!this.selected) {
-			const empty = container.createEl("div", { cls: "tm-inbox-tab-empty" });
-			const iconEl = empty.createEl("div", { cls: "tm-inbox-tab-empty-icon" });
+			const empty = container.createDiv({ cls: "tm-inbox-tab-empty" });
+			const iconEl = empty.createDiv({ cls: "tm-inbox-tab-empty-icon" });
 			setIcon(iconEl, "mouse-pointer-click");
 			empty.createEl("p", { text: "Select an item from the inbox to preview it.", cls: "tm-inbox-tab-empty-title" });
 			return;
@@ -153,16 +153,16 @@ export class InboxTabView extends ItemView {
 
 		const item = this.selected;
 
-		const header = container.createEl("div", { cls: "tm-inbox-tab-main-header" });
-		const titleWrap = header.createEl("div", { cls: "tm-inbox-tab-main-title-wrap" });
-		const fileIcon = titleWrap.createEl("span", { cls: "tm-inbox-tab-main-file-icon" });
+		const header = container.createDiv({ cls: "tm-inbox-tab-main-header" });
+		const titleWrap = header.createDiv({ cls: "tm-inbox-tab-main-title-wrap" });
+		const fileIcon = titleWrap.createSpan({ cls: "tm-inbox-tab-main-file-icon" });
 		setIcon(fileIcon, "file-text");
-		titleWrap.createEl("span", { text: item.file.basename, cls: "tm-inbox-tab-main-title" });
+		titleWrap.createSpan({ text: item.file.basename, cls: "tm-inbox-tab-main-title" });
 		if (item.type === "inline") {
-			titleWrap.createEl("span", { text: item.tag, cls: "tm-inbox-tab-main-tag" });
+			titleWrap.createSpan({ text: item.tag, cls: "tm-inbox-tab-main-tag" });
 		}
 
-		const actions = header.createEl("div", { cls: "tm-inbox-tab-main-actions" });
+		const actions = header.createDiv({ cls: "tm-inbox-tab-main-actions" });
 
 		const snoozeBtn = actions.createEl("button", { cls: "tm-inbox-icon-btn clickable-icon", attr: { "aria-label": "Snooze" } });
 		setIcon(snoozeBtn, "clock");
@@ -186,7 +186,7 @@ export class InboxTabView extends ItemView {
 		const openBtn = actions.createEl("button", { cls: "tm-inbox-tab-open-btn mod-cta", text: "Open" });
 		openBtn.addEventListener("click", () => void openInboxItem(this.app, item));
 
-		const embedEl = container.createEl("div", { cls: "tm-inbox-tab-embed" });
+		const embedEl = container.createDiv({ cls: "tm-inbox-tab-embed" });
 		if (!this.embeddedLeaf) this.embeddedLeaf = new EmbeddedLeaf(this.app);
 		this.embeddedLeaf.attachTo(embedEl);
 		void this.embeddedLeaf.openFile(item.file, item.type === "inline" ? item.line : undefined);

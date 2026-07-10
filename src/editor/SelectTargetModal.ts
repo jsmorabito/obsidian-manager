@@ -53,8 +53,11 @@ export class SelectTagModal extends FuzzySuggestModal<TagEntry> {
 	}
 
 	getItems(): TagEntry[] {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-		const tagCache: Record<string, number> = (this.app as any).metadataCache?.getTags?.() ?? {};
+		// getTags() is an undocumented MetadataCache method (not in the public API).
+		const metadataCache = this.app.metadataCache as unknown as {
+			getTags?(): Record<string, number>;
+		};
+		const tagCache: Record<string, number> = metadataCache.getTags?.() ?? {};
 		return Object.entries(tagCache)
 			.map(([tag, count]) => ({ tag: tag.replace(/^#/, ""), count }))
 			.sort((a, b) => b.count - a.count);

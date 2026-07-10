@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import { App, Editor, EditorPosition, EditorRange, normalizePath } from "obsidian";
 
 // ── Word boundary detection ───────────────────────────────────────────────────

@@ -1,5 +1,4 @@
  
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 /**
  * Quick-switcher integrations.
  *
@@ -15,7 +14,7 @@ import { findPeriodicNotes } from "./discovery";
 import { displayConfigs } from "./types";
 import type { Granularity } from "./types";
 import { addHalfYears } from "./half-year";
-// eslint-disable-next-line no-restricted-imports
+ 
 import type moment from "moment";
 
 // ── Related-files switcher ────────────────────────────────────────────────────
@@ -128,10 +127,13 @@ export function registerQuickSwitchers(plugin: TimeManagerPlugin): void {
 					{
 						label: "Reveal in file explorer",
 						action: () => {
-							 
-							const explorer = (plugin.app as any).internalPlugins?.plugins?.[
-								"file-explorer"
-							]?.instance;
+							// app.internalPlugins isn't part of the public API.
+							const app = plugin.app as unknown as {
+								internalPlugins?: {
+									plugins?: Record<string, { instance?: { revealInFolder?(file: TFile): void } }>;
+								};
+							};
+							const explorer = app.internalPlugins?.plugins?.["file-explorer"]?.instance;
 							if (explorer?.revealInFolder) explorer.revealInFolder(activeFile);
 						},
 					},

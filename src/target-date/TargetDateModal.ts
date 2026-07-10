@@ -15,7 +15,7 @@
  */
 
 import { App, Modal, moment } from "obsidian";
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 import type { TargetGranularity, TargetDate } from "./types";
 import { formatTargetDate, labelTargetDate, targetDateToEndMoment } from "./target-date-service";
@@ -75,7 +75,7 @@ export class TargetDateModal extends Modal {
 
 		// ── Preview ──────────────────────────────────────────────────────────────
 		const previewWrap = contentEl.createDiv({ cls: "tm-tdm-preview" });
-		previewWrap.createEl("span", {
+		previewWrap.createSpan({
 			text: labelTargetDate(formatTargetDate(this.selectedDate, this.selectedGran), this.selectedGran),
 			cls: "tm-tdm-preview-text",
 		});

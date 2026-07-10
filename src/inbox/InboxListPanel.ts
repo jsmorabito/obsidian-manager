@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-misused-promises, obsidianmd/ui/sentence-case, obsidianmd/no-static-styles-assignment */
 import { Menu, setIcon } from "obsidian";
 import type TimeManagerPlugin from "../main";
 import { SnoozeModal } from "./SnoozeModal";
@@ -51,12 +50,12 @@ export class InboxListPanel {
 	// ── Header ────────────────────────────────────────────────────────────────
 
 	private renderHeader(container: HTMLElement): void {
-		const header = container.createEl("div", { cls: "tm-inbox-header" });
+		const header = container.createDiv({ cls: "tm-inbox-header" });
 
-		const left = header.createEl("div", { cls: "tm-inbox-header-left" });
-		const iconEl = left.createEl("div", { cls: "tm-inbox-header-icon" });
+		const left = header.createDiv({ cls: "tm-inbox-header-left" });
+		const iconEl = left.createDiv({ cls: "tm-inbox-header-icon" });
 		setIcon(iconEl, "inbox");
-		left.createEl("span", { text: "Inbox", cls: "tm-inbox-title" });
+		left.createSpan({ text: "Inbox", cls: "tm-inbox-title" });
 
 		const allItems = this.inboxService.getInboxItems(
 			this.plugin.settings.time.inboxTags,
@@ -65,10 +64,10 @@ export class InboxListPanel {
 		);
 		const unreadCount = allItems.filter((i) => !this.isRead(i)).length;
 		if (unreadCount > 0) {
-			left.createEl("span", { text: String(unreadCount), cls: "tm-inbox-badge" });
+			left.createSpan({ text: String(unreadCount), cls: "tm-inbox-badge" });
 		}
 
-		const right = header.createEl("div", { cls: "tm-inbox-header-right" });
+		const right = header.createDiv({ cls: "tm-inbox-header-right" });
 
 		const displayBtn = right.createEl("button", { cls: "tm-inbox-icon-btn clickable-icon", attr: { "aria-label": "Display options" } });
 		setIcon(displayBtn, "sliders-horizontal");
@@ -168,12 +167,12 @@ export class InboxListPanel {
 	}
 
 	private renderEmpty(container: HTMLElement): void {
-		const empty = container.createEl("div", { cls: "tm-inbox-empty" });
-		const iconEl = empty.createEl("div", { cls: "tm-inbox-empty-icon" });
+		const empty = container.createDiv({ cls: "tm-inbox-empty" });
+		const iconEl = empty.createDiv({ cls: "tm-inbox-empty-icon" });
 		setIcon(iconEl, "inbox");
 		empty.createEl("p", { text: "Your inbox is empty.", cls: "tm-inbox-empty-title" });
 		empty.createEl("p", {
-			text: 'Run "Add file to inbox" or tag any line with #inbox.',
+			text: 'Run "add file to inbox" or tag any line with #inbox.',
 			cls: "tm-inbox-empty-sub",
 		});
 	}
@@ -200,33 +199,33 @@ export class InboxListPanel {
 
 	private renderItem(container: HTMLElement, item: TaggedInboxItem): void {
 		const isRead = this.isRead(item);
-		const row = container.createEl("div", { cls: "tm-inbox-item" });
+		const row = container.createDiv({ cls: "tm-inbox-item" });
 		if (this.isSelected(item)) row.addClass("is-selected");
 
-		row.createEl("div", { cls: "tm-inbox-unread-dot" + (isRead ? "" : " is-unread") });
+		row.createDiv({ cls: "tm-inbox-unread-dot" + (isRead ? "" : " is-unread") });
 
-		const fileIcon = row.createEl("div", { cls: "tm-inbox-item-icon" });
+		const fileIcon = row.createDiv({ cls: "tm-inbox-item-icon" });
 		setIcon(fileIcon, item.type === "inline" ? "text" : "file-text");
 
-		const content = row.createEl("div", { cls: "tm-inbox-item-content" });
-		content.createEl("div", { cls: "tm-inbox-item-name", text: item.file.basename }).title = item.file.path;
+		const content = row.createDiv({ cls: "tm-inbox-item-content" });
+		content.createDiv({ cls: "tm-inbox-item-name", text: item.file.basename }).title = item.file.path;
 
 		if (item.type === "inline") {
-			const lineEl = content.createEl("div", { cls: "tm-inbox-item-line", text: "…" });
+			const lineEl = content.createDiv({ cls: "tm-inbox-item-line", text: "…" });
 			void this.app.vault.cachedRead(item.file).then((txt) => {
 				const lines = txt.split("\n");
 				lineEl.setText(lines[item.line] ?? "");
 			});
 		}
 
-		const rightEl = row.createEl("div", { cls: "tm-inbox-item-right" });
-		rightEl.createEl("span", {
+		const rightEl = row.createDiv({ cls: "tm-inbox-item-right" });
+		rightEl.createSpan({
 			cls: "tm-inbox-item-age",
 			text: formatRelativeAge(item.addedAt),
 			attr: { "aria-label": new Date(item.addedAt).toLocaleString() },
 		});
 
-		const actionsEl = rightEl.createEl("div", { cls: "tm-inbox-item-actions" });
+		const actionsEl = rightEl.createDiv({ cls: "tm-inbox-item-actions" });
 		const moreBtn = actionsEl.createEl("button", {
 			cls: "tm-inbox-item-more-btn",
 			attr: { "aria-label": "Item actions" },
@@ -280,9 +279,8 @@ export class InboxListPanel {
 			mi.setTitle("Snooze");
 			mi.setIcon("clock");
 			mi.onClick(() => {
-				new SnoozeModal(this.app, async (remindAt) => {
-					await this.inboxService.snoozeItem(item.file, remindAt);
-					this.render();
+				new SnoozeModal(this.app, (remindAt) => {
+					void this.inboxService.snoozeItem(item.file, remindAt).then(() => this.render());
 				}).open();
 			});
 		});
@@ -309,13 +307,13 @@ export class InboxListPanel {
 		this.closePopover();
 
 		const display = this.plugin.settings.time.inboxDisplay;
-		const panel = this.container.createEl("div", { cls: "tm-inbox-popover tm-inbox-display-panel" });
+		const panel = this.container.createDiv({ cls: "tm-inbox-popover tm-inbox-display-panel" });
 		this.positionPopover(panel, anchor);
 		this.activePopover = panel;
 		this.activePopoverAnchor = anchor;
 
-		const orderRow = panel.createEl("div", { cls: "tm-inbox-display-row" });
-		orderRow.createEl("span", { text: "Sort by", cls: "tm-inbox-display-label" });
+		const orderRow = panel.createDiv({ cls: "tm-inbox-display-row" });
+		orderRow.createSpan({ text: "Sort by", cls: "tm-inbox-display-label" });
 		const orderSelect = orderRow.createEl("select", { cls: "tm-inbox-display-select" });
 
 		const sortOptions: { value: string; label: string }[] = [
@@ -327,12 +325,14 @@ export class InboxListPanel {
 			const el = orderSelect.createEl("option", { value: opt.value, text: opt.label });
 			if (display.sortOrder === opt.value) el.selected = true;
 		}
-		orderSelect.addEventListener("change", async (e) => {
+		orderSelect.addEventListener("change", (e) => {
 			e.stopPropagation();
 			display.sortOrder = (e.target as HTMLSelectElement).value as typeof display.sortOrder;
-			await this.plugin.saveSettings();
-			this.closePopover();
-			this.render();
+			void (async () => {
+				await this.plugin.saveSettings();
+				this.closePopover();
+				this.render();
+			})();
 		});
 	}
 
@@ -344,19 +344,21 @@ export class InboxListPanel {
 		label: string,
 		options: { text: string; isActive: boolean; onClick: () => void | Promise<void> }[],
 	): void {
-		const section = panel.createEl("div", { cls: "tm-inbox-filter-section" });
-		section.createEl("span", { text: label, cls: "tm-inbox-filter-label" });
+		const section = panel.createDiv({ cls: "tm-inbox-filter-section" });
+		section.createSpan({ text: label, cls: "tm-inbox-filter-label" });
 		for (const opt of options) {
 			const btn = section.createEl("button", {
 				cls: "tm-inbox-filter-option" + (opt.isActive ? " is-active" : ""),
 				text: opt.text,
 			});
-			btn.addEventListener("click", async (e) => {
+			btn.addEventListener("click", (e) => {
 				e.stopPropagation();
-				await opt.onClick();
-				await this.plugin.saveSettings();
-				this.closePopover();
-				this.render();
+				void (async () => {
+					await opt.onClick();
+					await this.plugin.saveSettings();
+					this.closePopover();
+					this.render();
+				})();
 			});
 		}
 	}
@@ -367,12 +369,12 @@ export class InboxListPanel {
 		const configuredTags = this.plugin.settings.time.inboxTags;
 		const display = this.plugin.settings.time.inboxDisplay;
 		const folders = this.availableFolders();
-		const panel = this.container.createEl("div", { cls: "tm-inbox-popover tm-inbox-filter-panel" });
+		const panel = this.container.createDiv({ cls: "tm-inbox-popover tm-inbox-filter-panel" });
 		this.positionPopover(panel, anchor);
 		this.activePopover = panel;
 		this.activePopoverAnchor = anchor;
 
-		panel.createEl("div", { text: "Filters", cls: "tm-inbox-popover-title" });
+		panel.createDiv({ text: "Filters", cls: "tm-inbox-popover-title" });
 
 		this.renderFilterSection(panel, "Type", [
 			{ text: "All",    isActive: display.typeFilter === "all",    onClick: () => { display.typeFilter = "all"; } },
@@ -409,17 +411,19 @@ export class InboxListPanel {
 		}
 
 		if (this.hasActiveFilters()) {
-			const clearSection = panel.createEl("div", { cls: "tm-inbox-filter-section" });
+			const clearSection = panel.createDiv({ cls: "tm-inbox-filter-section" });
 			const clearBtn = clearSection.createEl("button", { cls: "tm-inbox-filter-option tm-inbox-filter-clear", text: "Clear all filters" });
-			clearBtn.addEventListener("click", async (e) => {
+			clearBtn.addEventListener("click", (e) => {
 				e.stopPropagation();
 				display.inboxTagFilter = null;
 				display.typeFilter = "all";
 				display.readFilter = "all";
 				display.folderFilter = null;
-				await this.plugin.saveSettings();
-				this.closePopover();
-				this.render();
+				void (async () => {
+					await this.plugin.saveSettings();
+					this.closePopover();
+					this.render();
+				})();
 			});
 		}
 	}
@@ -427,10 +431,12 @@ export class InboxListPanel {
 	private positionPopover(panel: HTMLElement, anchor: HTMLElement): void {
 		const rect = anchor.getBoundingClientRect();
 		const containerRect = this.container.getBoundingClientRect();
-		panel.style.position = "absolute";
-		panel.style.top = (rect.bottom - containerRect.top + 4) + "px";
-		panel.style.right = (containerRect.right - rect.right) + "px";
-		panel.style.setProperty("z-index", "var(--layer-menu)");
+		panel.setCssStyles({
+			position: "absolute",
+			top: (rect.bottom - containerRect.top + 4) + "px",
+			right: (containerRect.right - rect.right) + "px",
+			zIndex: "var(--layer-menu)",
+		});
 	}
 
 	private closePopover(): void {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 /**
  * Arrow-up / arrow-down navigation between embedded editors.
  *
@@ -15,8 +14,9 @@ import type { KeyBinding } from "@codemirror/view";
 function getEmbeddedEditors(container: HTMLElement): EditorView[] {
 	const editors: EditorView[] = [];
 	container.querySelectorAll<HTMLElement>(".cm-editor").forEach((el) => {
-		// @ts-ignore — CodeMirror attaches its EditorView to the DOM element
-		const view: EditorView | undefined = el.cmView?.view ?? el.cmView;
+		// CodeMirror attaches its EditorView to the DOM element as `.cmView` — not part of HTMLElement's public type.
+		const cmView = (el as unknown as { cmView?: { view?: EditorView } | EditorView }).cmView;
+		const view = cmView && "view" in cmView ? cmView.view : cmView;
 		if (view instanceof EditorView) editors.push(view);
 	});
 	return editors;

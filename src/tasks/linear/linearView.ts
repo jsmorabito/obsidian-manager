@@ -96,12 +96,12 @@ export class LinearView extends ItemView {
 				const opt = select.createEl("option", { value: ws.id, text: ws.name });
 				if (ws.id === this.state.workspaceId) opt.selected = true;
 			}
-			select.addEventListener("change", async () => {
+			select.addEventListener("change", () => {
 				this.state.workspaceId = select.value;
 				this.state.teamId = null;
 				this.issues = [];
 				this.render();
-				await this.loadTeams();
+				void this.loadTeams();
 			});
 		} else if (workspaces.length === 1 && workspaces[0]) {
 			left.createSpan({ cls: "linear-view__ws-name", text: workspaces[0].name });
@@ -113,15 +113,17 @@ export class LinearView extends ItemView {
 		const syncBtn = buttons.createDiv({ cls: "clickable-icon nav-action-button linear-view__sync-btn" });
 		setIcon(syncBtn, "refresh-cw");
 		setTooltip(syncBtn, "Sync all linked notes", { delay: 0 });
-		syncBtn.addEventListener("click", async () => {
-			syncBtn.addClass("is-loading");
-			const { updated, errors } = await this.manager.pullAll();
-			syncBtn.removeClass("is-loading");
-			new Notice(
-				errors > 0
-					? `Linear sync: ${updated} updated, ${errors} errors.`
-					: `Linear sync: ${updated} note${updated === 1 ? "" : "s"} updated.`
-			);
+		syncBtn.addEventListener("click", () => {
+			void (async () => {
+				syncBtn.addClass("is-loading");
+				const { updated, errors } = await this.manager.pullAll();
+				syncBtn.removeClass("is-loading");
+				new Notice(
+					errors > 0
+						? `Linear sync: ${updated} updated, ${errors} errors.`
+						: `Linear sync: ${updated} note${updated === 1 ? "" : "s"} updated.`
+				);
+			})();
 		});
 
 		const settingsBtn = buttons.createDiv({ cls: "clickable-icon nav-action-button" });
@@ -159,9 +161,9 @@ export class LinearView extends ItemView {
 			const opt = teamSelect.createEl("option", { value: team.id, text: team.name });
 			if (team.id === this.state.teamId) opt.selected = true;
 		}
-		teamSelect.addEventListener("change", async () => {
+		teamSelect.addEventListener("change", () => {
 			this.state.teamId = teamSelect.value || null;
-			await this.loadIssues();
+			void this.loadIssues();
 		});
 
 		const toggles = row2.createDiv({ cls: "linear-view__toggles" });
@@ -178,13 +180,13 @@ export class LinearView extends ItemView {
 			});
 		};
 
-		makeToggle("Mine", this.state.assignedToMe, async (v) => {
+		makeToggle("Mine", this.state.assignedToMe, (v) => {
 			this.state.assignedToMe = v;
-			await this.loadIssues();
+			void this.loadIssues();
 		});
-		makeToggle("Completed", this.state.includeCompleted, async (v) => {
+		makeToggle("Completed", this.state.includeCompleted, (v) => {
 			this.state.includeCompleted = v;
-			await this.loadIssues();
+			void this.loadIssues();
 		});
 	}
 
@@ -248,25 +250,27 @@ export class LinearView extends ItemView {
 		if (alreadyImported) {
 			setIcon(importBtn, "file-text");
 			setTooltip(importBtn, "Open note", { delay: 0 });
-			importBtn.addEventListener("click", async (e) => {
+			importBtn.addEventListener("click", (e) => {
 				e.stopPropagation();
 				const file = this.manager.findNoteForIssue(issue.id);
 				if (file) {
 					const leaf = this.app.workspace.getMostRecentLeaf(this.app.workspace.rootSplit);
-					if (leaf) await leaf.openFile(file);
+					if (leaf) void leaf.openFile(file);
 				}
 			});
 		} else {
 			setIcon(importBtn, "download");
 			setTooltip(importBtn, "Import as note", { delay: 0 });
-			importBtn.addEventListener("click", async (e) => {
+			importBtn.addEventListener("click", (e) => {
 				e.stopPropagation();
-				const file = await this.manager.importIssue(issue);
-				if (file) {
-					row.addClass("is-imported");
-					setIcon(importBtn, "file-text");
-					setTooltip(importBtn, "Open note", { delay: 0 });
-				}
+				void (async () => {
+					const file = await this.manager.importIssue(issue);
+					if (file) {
+						row.addClass("is-imported");
+						setIcon(importBtn, "file-text");
+						setTooltip(importBtn, "Open note", { delay: 0 });
+					}
+				})();
 			});
 		}
 
@@ -318,8 +322,8 @@ export class LinearView extends ItemView {
 					.setTitle("Add to chain…")
 					.setIcon("link")
 					.onClick(() => {
-						new ChainSuggestModal(this.app, chains, async (chain) => {
-							await this.importAndAddToChain(issue, chain.name, row, importBtn);
+						new ChainSuggestModal(this.app, chains, (chain) => {
+							void this.importAndAddToChain(issue, chain.name, row, importBtn);
 						}).open();
 					})
 			);

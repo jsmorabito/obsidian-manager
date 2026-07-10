@@ -1,4 +1,3 @@
-/* eslint-disable obsidianmd/ui/sentence-case */
 import { App, Modal, Notice, PluginSettingTab, Setting, SettingDefinitionItem, SettingDefinitionPage, moment } from "obsidian";
 import type TimeManagerPlugin from "./main";
 import type { RecentFileEntry } from "./recently-viewed/types";
@@ -542,7 +541,7 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 					name: "Date format",
 					desc: `Moment.js format string (e.g. ${example}).`,
 					render: (setting) => {
-						const previewEl = setting.descEl.createEl("div", {
+						const previewEl = setting.descEl.createDiv({
 							cls: "tm-format-preview",
 							text: `→ ${moment().format(config.format)}`,
 						});
@@ -568,8 +567,7 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 					desc: "Path to a markdown file used as a template for new notes.",
 					render: (setting) => {
 						// File picker
-						/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
-						(setting as any).addSearch?.((s: any) => {
+						setting.addSearch((s) => {
 							s.setPlaceholder("Templates/daily.md");
 							s.setValue(config.templatePath);
 							s.onChange(async (v: string) => {
@@ -577,7 +575,6 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 								await this.plugin.saveSettings();
 							});
 						});
-						/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
 						// Variables reference — collapsible <details> block
 						const details = setting.descEl.createEl("details", {
@@ -718,7 +715,7 @@ export class TimeManagerSettingTab extends PluginSettingTab {
 				desc: `${typeLabel}: ${shortValue}`,
 				render: (setting) => {
 					// Colour swatch
-					const swatchEl = setting.nameEl.createEl("span", {
+					const swatchEl = setting.nameEl.createSpan({
 						cls: "tm-calendar-source-swatch",
 						attr: { style: `background:${source.color || "var(--interactive-accent)"}` },
 					});
@@ -1056,7 +1053,7 @@ export class AddPresetModal extends Modal {
 			new Setting(contentEl)
 				.setName("Folder path")
 				.addText((t) =>
-					t.setPlaceholder("Notes/Work").onChange((v) => (this.folderPath = v))
+					t.setPlaceholder("Notes/work").onChange((v) => (this.folderPath = v))
 				);
 		}
 

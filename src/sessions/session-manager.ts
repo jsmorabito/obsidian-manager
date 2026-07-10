@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unused-vars */
 import { normalizePath, TFile, TFolder } from "obsidian";
 import type TimeManagerPlugin from "../main";
 import type { ActiveSession, SessionFrontmatter } from "./types";
@@ -100,7 +99,7 @@ export class SessionManager {
 
 		const file = this.getFile(session.filePath);
 		if (file) {
-			await this.plugin.app.fileManager.processFrontMatter(file, (fm) => {
+			await this.plugin.app.fileManager.processFrontMatter(file, (fm: SessionFrontmatter) => {
 				fm.session_end = endIso;
 				fm.duration_minutes = durationMinutes;
 				if (finalTags !== undefined) fm.tags = finalTags;
@@ -164,7 +163,7 @@ export class SessionManager {
 		if (!this.activeSession) return;
 		const file = this.getFile(this.activeSession.filePath);
 		if (!file) return;
-		await this.plugin.app.fileManager.processFrontMatter(file, (fm) => {
+		await this.plugin.app.fileManager.processFrontMatter(file, (fm: SessionFrontmatter) => {
 			if (Array.isArray(fm.segments) && fm.segments.length > 0) {
 				const last = fm.segments[fm.segments.length - 1];
 				if (last.end == null) last.end = endIso;
@@ -176,7 +175,7 @@ export class SessionManager {
 		if (!this.activeSession) return;
 		const file = this.getFile(this.activeSession.filePath);
 		if (!file) return;
-		await this.plugin.app.fileManager.processFrontMatter(file, (fm) => {
+		await this.plugin.app.fileManager.processFrontMatter(file, (fm: SessionFrontmatter) => {
 			if (!Array.isArray(fm.segments)) fm.segments = [];
 			fm.segments.push({ start: startIso, end: null });
 		});

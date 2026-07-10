@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 // Template substitution. Ported from liamcain/obsidian-periodic-notes (MIT).
 // Extended to support {{name:FORMAT}} and {{name±Nd:FORMAT}} for all granularities.
-// eslint-disable-next-line no-restricted-imports
+ 
 import type { Moment } from "moment";
 import { App, normalizePath, Notice } from "obsidian";
 import type { Granularity } from "../periodic/types";
@@ -11,8 +10,7 @@ import { startOfHalfYear } from "../periodic/half-year";
 
 function getDaysOfWeek(): string[] {
 	const { moment } = window;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	let weekStart = (moment.localeData() as any)._week.dow;
+	let weekStart = moment.localeData().firstDayOfWeek();
 	const daysOfWeek = [
 		"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
 	];
@@ -57,10 +55,10 @@ function applyGranularPattern(
 		`{{\\s*${escaped}\\s*(([+-]\\d+)([yqmwdhs]))?\\s*(:.+?)?}}`,
 		"gi"
 	);
-	return content.replace(pattern, (_, _calc, timeDelta, unit, momentFormat) => {
+	return content.replace(pattern, (_, _calc: string, timeDelta: string, unit: string, momentFormat: string) => {
 		const d = baseDate.clone();
-		if (timeDelta && unit) d.add(parseInt(timeDelta, 10), OFFSET_UNIT_MAP[(unit as string).toLowerCase()]);
-		if (momentFormat) return d.format((momentFormat as string).substring(1).trim());
+		if (timeDelta && unit) d.add(parseInt(timeDelta, 10), OFFSET_UNIT_MAP[unit.toLowerCase()]);
+		if (momentFormat) return d.format(momentFormat.substring(1).trim());
 		return d.format(defaultFormat);
 	});
 }
@@ -112,9 +110,9 @@ export function applyTemplateTransformations(
 		// {{monday:FORMAT}} … {{sunday:FORMAT}} — specific day within the week
 		t = t.replace(
 			/{{\s*(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\s*:(.*?)}}/gi,
-			(_, dayOfWeek, momentFormat) => {
+			(_, dayOfWeek: string, momentFormat: string) => {
 				const day = getDayOfWeekNumericalValue(dayOfWeek);
-				return date.weekday(day).format((momentFormat as string).trim());
+				return date.weekday(day).format(momentFormat.trim());
 			}
 		);
 	}
@@ -223,7 +221,6 @@ export async function getTemplateContents(
 		return templateFile ? vault.cachedRead(templateFile) : "";
 	} catch (err) {
 		console.error(`Obsidian Time Tools: failed to read template '${normalizedTemplatePath}'`, err);
-		// eslint-disable-next-line obsidianmd/ui/sentence-case
 		new Notice("Obsidian Time Tools: failed to read note template");
 		return "";
 	}

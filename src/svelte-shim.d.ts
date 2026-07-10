@@ -2,11 +2,8 @@
 // runtime compilation; this declaration just gives TS something to point at
 // for both `import Foo from "./Foo.svelte"` (value) and `view: Foo` (type).
 declare module "*.svelte" {
-	/* eslint-disable @typescript-eslint/no-explicit-any */
-	export default class {
-		constructor(opts: { target: HTMLElement; props?: Record<string, any> });
-		$set(props: Record<string, any>): void;
-		$destroy(): void;
-		[key: string]: any;
-	}
+	import { SvelteComponent } from "svelte";
+	// SvelteComponent's own typings use `any` for props/events/slots by design —
+	// component shape is inherently generic at this level.
+	export default class extends SvelteComponent {}
 }

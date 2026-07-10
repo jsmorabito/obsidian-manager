@@ -5,6 +5,7 @@
  * Each workspace gets its own instance so tokens are never mixed.
  */
 
+import { requestUrl } from "obsidian";
 import type { LinearIssueStub, LinearTeam } from "../types";
 
 const LINEAR_API = "https://api.linear.app/graphql";
@@ -21,21 +22,22 @@ export class LinearClient {
 	// ── Core request ────────────────────────────────────────────────────────
 
 	private async query<T>(gql: string, variables?: Record<string, unknown>): Promise<T> {
-		// eslint-disable-next-line no-restricted-globals
-		const res = await fetch(LINEAR_API, {
+		const res = await requestUrl({
+			url: LINEAR_API,
 			method: "POST",
+			contentType: "application/json",
 			headers: {
-				"Content-Type": "application/json",
 				Authorization: this.token,
 			},
 			body: JSON.stringify({ query: gql, variables }),
+			throw: false,
 		});
 
-		if (!res.ok) {
-			throw new Error(`Linear API HTTP ${res.status}: ${res.statusText}`);
+		if (res.status >= 400) {
+			throw new Error(`Linear API HTTP ${res.status}`);
 		}
 
-		const json = (await res.json()) as { data?: T; errors?: { message: string }[] };
+		const json = res.json as { data?: T; errors?: { message: string }[] };
 
 		if (json.errors?.length) {
 			throw new Error(`Linear API error: ${json.errors.map((e) => e.message).join(", ")}`);
@@ -325,10 +327,10 @@ export async function exchangeOAuthCode(opts: {
 	clientSecret: string;
 	redirectUri: string;
 }): Promise<{ accessToken: string; tokenType: string; scope: string }> {
-	// eslint-disable-next-line no-restricted-globals
-	const res = await fetch(LINEAR_OAUTH_TOKEN_URL, {
+	const res = await requestUrl({
+		url: LINEAR_OAUTH_TOKEN_URL,
 		method: "POST",
-		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+		contentType: "application/x-www-form-urlencoded",
 		body: new URLSearchParams({
 			code: opts.code,
 			client_id: opts.clientId,
@@ -336,8 +338,9 @@ export async function exchangeOAuthCode(opts: {
 			redirect_uri: opts.redirectUri,
 			grant_type: "authorization_code",
 		}).toString(),
+		throw: false,
 	});
-	if (!res.ok) throw new Error(`OAuth token exchange failed: ${res.status}`);
-	const json = (await res.json()) as { access_token: string; token_type: string; scope: string };
+	if (res.status >= 400) throw new Error(`OAuth token exchange failed: ${res.status}`);
+	const json = res.json as { access_token: string; token_type: string; scope: string };
 	return { accessToken: json.access_token, tokenType: json.token_type, scope: json.scope };
 }

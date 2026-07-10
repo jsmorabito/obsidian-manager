@@ -6,7 +6,6 @@ import moment from "moment";
 
 // moment is a global in real Obsidian; provide it here too so `window.moment`
 // and the `moment` import from "obsidian" are the same instance.
-(globalThis as Record<string, unknown>).moment = moment;
 (window as unknown as Record<string, unknown>).moment = moment;
 
 export { moment };

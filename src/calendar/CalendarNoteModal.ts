@@ -51,10 +51,9 @@ export class NoteNameModal extends Modal {
 			value: this._defaultName,
 			cls: "tm-note-name-input",
 		});
-		input.style.cssText = "width:100%;margin:8px 0 16px;font-size:var(--font-ui-medium);padding:6px 10px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);background:var(--background-primary);color:var(--text-normal);box-sizing:border-box;";
+		input.addClass("tm-note-name-input-field");
 
 		const btnRow = contentEl.createDiv({ cls: "tm-note-name-btns" });
-		btnRow.style.cssText = "display:flex;justify-content:flex-end;gap:8px;";
 
 		const cancel = btnRow.createEl("button", { text: "Cancel" });
 		cancel.onclick = () => this.close();
@@ -72,7 +71,7 @@ export class NoteNameModal extends Modal {
 		});
 
 		// Select all text so user can immediately retype
-		setTimeout(() => { input.select(); }, 10);
+		window.setTimeout(() => { input.select(); }, 10);
 	}
 
 	onClose(): void {

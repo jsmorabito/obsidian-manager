@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-floating-promises, @typescript-eslint/no-misused-promises, @typescript-eslint/no-unnecessary-type-assertion */
 import "./obsidian-augmentations";
 import { App, Editor, MarkdownView, Menu, Modal, Notice, Plugin, Setting, TFile, WorkspaceLeaf, addIcon, moment, setIcon, setTooltip } from "obsidian";
 import {
@@ -83,7 +82,7 @@ class NewBlankFileModal extends Modal {
 		new Setting(contentEl).setName("File name").addText((text) => {
 			text.setPlaceholder("My new file").onChange((v) => { this.name = v.trim(); });
 			text.inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); void this.submit(); } });
-			setTimeout(() => text.inputEl.focus(), 0);
+			window.setTimeout(() => text.inputEl.focus(), 0);
 		});
 		new Setting(contentEl).addButton((btn) => btn.setButtonText("Create").setCta().onClick(() => void this.submit()));
 	}
@@ -157,8 +156,8 @@ class CreateChainModal extends Modal {
 		new Setting(contentEl).setName("Chain name").addText((text) => {
 			text.setPlaceholder("E.g. Project alpha");
 			text.onChange((v) => { nameValue = v; });
-			setTimeout(() => text.inputEl.focus(), 0);
-			text.inputEl.addEventListener("keydown", async (e: KeyboardEvent) => { if (e.key === "Enter" && nameValue.trim()) { this.close(); await this.onSubmit(nameValue.trim()); } });
+			window.setTimeout(() => text.inputEl.focus(), 0);
+			text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => { if (e.key === "Enter" && nameValue.trim()) { this.close(); void this.onSubmit(nameValue.trim()); } });
 		});
 		new Setting(contentEl).addButton((btn) => btn.setButtonText("Create").setCta().onClick(async () => { if (!nameValue.trim()) return; this.close(); await this.onSubmit(nameValue.trim()); }));
 	}
@@ -178,8 +177,8 @@ class LinearPushStateModal extends Modal {
 		new Setting(contentEl).setName("State name").addText((text) => {
 			text.setPlaceholder("In progress");
 			text.onChange((v) => { value = v; });
-			setTimeout(() => text.inputEl.focus(), 0);
-			text.inputEl.addEventListener("keydown", async (e: KeyboardEvent) => { if (e.key === "Enter" && value.trim()) { this.close(); await this.onSubmit(value.trim()); } });
+			window.setTimeout(() => text.inputEl.focus(), 0);
+			text.inputEl.addEventListener("keydown", (e: KeyboardEvent) => { if (e.key === "Enter" && value.trim()) { this.close(); void this.onSubmit(value.trim()); } });
 		});
 		new Setting(contentEl).addButton((btn) => btn.setButtonText("Push").setCta().onClick(async () => { if (!value.trim()) return; this.close(); await this.onSubmit(value.trim()); }));
 	}
@@ -202,7 +201,7 @@ class LinearOAuthModal extends Modal {
 			text.inputEl.type = "password";
 			text.setPlaceholder("Lin_API_…");
 			text.onChange((v) => { token = v; });
-			setTimeout(() => text.inputEl.focus(), 0);
+			window.setTimeout(() => text.inputEl.focus(), 0);
 		});
 		new Setting(contentEl)
 			.addButton((btn) => btn.setButtonText("Connect").setCta().onClick(async () => { if (!token.trim()) return; this.close(); await this.onToken(token.trim()); }))
@@ -296,8 +295,7 @@ export default class ManagerPlugin extends Plugin {
 		this.addCommand({ id: "open-inbox-tab-view", name: "Open inbox in tab", callback: () => void this.openInboxTabView() });
 		this.addCommand({
 			id: "open-recently-viewed",
-			// eslint-disable-next-line obsidianmd/ui/sentence-case
-			name: "Open Recently Viewed panel",
+			name: "Open recently viewed panel",
 			callback: () => this.openRecentlyViewedPanel(),
 		});
 
@@ -320,7 +318,7 @@ export default class ManagerPlugin extends Plugin {
 		}));
 		this.app.workspace.onLayoutReady(() => this.refreshReminderChip());
 		registerFileMenuHandlers(this);
-		this.registerInterval(window.setInterval(this.checkDayChange.bind(this), 1000 * 60 * 15));
+		this.registerInterval(window.setInterval(() => { void this.checkDayChange(); }, 1000 * 60 * 15));
 		this.registerEvent(this.app.workspace.on("layout-change", () => this._registerObjectsTrigger()));
 		this.registerInterval(window.setInterval(() => this.refreshInboxView(), 1000 * 60));
 		this.registerInterval(window.setInterval(() => this.checkReminders(), 1000 * 60));
@@ -379,10 +377,10 @@ export default class ManagerPlugin extends Plugin {
 				const statuses = this.taskSettings.checkboxStatuses ?? DEFAULT_CHECKBOX_STATUSES;
 				const marks = statuses.map((s) => s.mark);
 				if (taskMatch) {
-					const mark = taskMatch[4]!;
+					const mark = taskMatch[4];
 					const idx = marks.indexOf(mark);
-					const checkboxStart = taskMatch[1]!.length + taskMatch[2]!.length;
-					const checkboxEnd = checkboxStart + taskMatch[3]!.length;
+					const checkboxStart = taskMatch[1].length + taskMatch[2].length;
+					const checkboxEnd = checkboxStart + taskMatch[3].length;
 					if (idx === marks.length - 1) {
 						const trailingSpace = lineText[checkboxEnd] === " " ? 1 : 0;
 						editor.replaceRange(lineText.substring(0, checkboxStart) + lineText.substring(checkboxEnd + trailingSpace), { line: cursor.line, ch: 0 }, { line: cursor.line, ch: lineText.length });
@@ -394,7 +392,7 @@ export default class ManagerPlugin extends Plugin {
 					const bulletMatch = BULLET_RE.exec(lineText);
 					if (bulletMatch) {
 						const firstMark = marks[0] ?? " ";
-						const insertCh = bulletMatch[0]!.length;
+						const insertCh = bulletMatch[0].length;
 						editor.replaceRange(lineText.substring(0, insertCh) + `[${firstMark}] ` + lineText.substring(insertCh), { line: cursor.line, ch: 0 }, { line: cursor.line, ch: lineText.length });
 					} else if (lineText.trim() === "") {
 						const indent = lineText.match(/^(\s*)/)?.[1] ?? "";
@@ -515,7 +513,7 @@ export default class ManagerPlugin extends Plugin {
 			callback: () => {
 				const eligible = this.taskSettings.chains.filter((c) => c.autoPopulateEnabled);
 				if (eligible.length === 0) { new Notice("No chains have auto-populate enabled."); return; }
-				if (eligible.length === 1 && eligible[0]) void this.autoPopulateChain(eligible[0]).then((n) => new Notice(`Auto-populated ${n} file${n === 1 ? "" : "s"} into "${eligible[0]!.name}".`));
+				if (eligible.length === 1 && eligible[0]) void this.autoPopulateChain(eligible[0]).then((n) => new Notice(`Auto-populated ${n} file${n === 1 ? "" : "s"} into "${eligible[0].name}".`));
 				else new ChainSuggestModal(this.app, eligible, (chain) => void this.autoPopulateChain(chain).then((n) => new Notice(`Auto-populated ${n} file${n === 1 ? "" : "s"} into "${chain.name}".`))).open();
 			},
 		});
@@ -635,22 +633,22 @@ export default class ManagerPlugin extends Plugin {
 	// ── Time-tools methods ────────────────────────────────────────────────────
 
 	private _registerObjectsTrigger(): void {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-		const objectsPlugin = (this.app as any).plugins?.plugins?.["filtered-file-commands"];
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		// "filtered-file-commands" is a third-party community plugin with no published types.
+		const objectsPlugin = this.app.plugins?.plugins?.["filtered-file-commands"] as
+			| {
+					registerTriggerProvider?: (provider: unknown) => void;
+					unregisterTriggerProvider?: (id: string) => void;
+			  }
+			| undefined;
 		if (typeof objectsPlugin?.registerTriggerProvider !== "function") return;
 		if (objectsPlugin === this._registeredWithObjects) return;
 		this._registeredWithObjects = objectsPlugin;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 		objectsPlugin.registerTriggerProvider(createPeriodicTriggerProvider(this));
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 		objectsPlugin.registerTriggerProvider(createDateTriggerProvider(this.dateSuggest));
 		this.dateSuggest.disable();
 		this.register(() => {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-			objectsPlugin.unregisterTriggerProvider("obsidian-time-tools");
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-			objectsPlugin.unregisterTriggerProvider("obsidian-time-tools-dates");
+			objectsPlugin.unregisterTriggerProvider?.("obsidian-time-tools");
+			objectsPlugin.unregisterTriggerProvider?.("obsidian-time-tools-dates");
 		});
 	}
 
@@ -676,10 +674,10 @@ export default class ManagerPlugin extends Plugin {
 	async openRecentlyViewedPanel(): Promise<void> {
 		const { workspace } = this.app;
 		const existing = workspace.getLeavesOfType(VIEW_TYPE_RECENTLY_VIEWED);
-		if (existing.length > 0) { workspace.revealLeaf(existing[0]); return; }
+		if (existing.length > 0) { await workspace.revealLeaf(existing[0]); return; }
 		const leaf = workspace.getLeftLeaf(false) ?? workspace.getLeaf(true);
 		await leaf.setViewState({ type: VIEW_TYPE_RECENTLY_VIEWED, active: true });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	private trackRecentFile(file: TFile): void {
@@ -713,13 +711,13 @@ export default class ManagerPlugin extends Plugin {
 		const existing = workspace.getLeavesOfType(TIME_MANAGER_EDITOR_VIEW);
 		const leaf = existing.length > 0 ? existing[0] : workspace.getLeaf(true);
 		if (existing.length === 0) await leaf.setViewState({ type: TIME_MANAGER_EDITOR_VIEW });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	async openNewEditorView(): Promise<void> {
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_EDITOR_VIEW });
-		this.app.workspace.revealLeaf(leaf);
+		await this.app.workspace.revealLeaf(leaf);
 	}
 
 	async openEditorViewAndScrollTo(file: TFile, granularity: Granularity): Promise<void> {
@@ -728,7 +726,7 @@ export default class ManagerPlugin extends Plugin {
 		let leaf: WorkspaceLeaf;
 		if (existing.length > 0) { leaf = existing[0]; }
 		else { leaf = workspace.getLeaf(true); await leaf.setViewState({ type: TIME_MANAGER_EDITOR_VIEW }); }
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 		await (leaf.view as DailyNoteView).scrollToFile(file, granularity);
 	}
 
@@ -738,37 +736,37 @@ export default class ManagerPlugin extends Plugin {
 			? workspace.getLeftLeaf(false) ?? workspace.getLeaf(true)
 			: workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_TIMELINE_VIEW });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	async openCalendarView(): Promise<void> {
 		const { workspace } = this.app;
 		const existing = workspace.getLeavesOfType(TIME_MANAGER_CALENDAR_VIEW);
 		if (existing.length > 0) {
-			workspace.revealLeaf(existing[0]);
+			await workspace.revealLeaf(existing[0]);
 			if (existing[0].view instanceof CalendarView) existing[0].view.refreshGrid();
 			return;
 		}
 		const leaf = workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_CALENDAR_VIEW });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	async openNewCalendarView(): Promise<void> {
 		const leaf = this.app.workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_CALENDAR_VIEW });
-		this.app.workspace.revealLeaf(leaf);
+		await this.app.workspace.revealLeaf(leaf);
 	}
 
 	async openAgendaView(): Promise<void> {
 		const { workspace } = this.app;
 		const existing = workspace.getLeavesOfType(TIME_MANAGER_AGENDA_VIEW);
-		if (existing.length > 0) { workspace.revealLeaf(existing[0]); (existing[0].view as AgendaView).refresh(); return; }
+		if (existing.length > 0) { await workspace.revealLeaf(existing[0]); (existing[0].view as AgendaView).refresh(); return; }
 		const leaf = this.settings.time.agendaSide === "left"
 			? workspace.getLeftLeaf(false) ?? workspace.getLeaf(true)
 			: workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_AGENDA_VIEW });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	refreshAgendaViews(): void {
@@ -778,10 +776,10 @@ export default class ManagerPlugin extends Plugin {
 	async openSessionsView(): Promise<void> {
 		const { workspace } = this.app;
 		const existing = workspace.getLeavesOfType(TIME_MANAGER_SESSIONS_VIEW);
-		if (existing.length > 0) { workspace.revealLeaf(existing[0]); return; }
+		if (existing.length > 0) { await workspace.revealLeaf(existing[0]); return; }
 		const leaf = workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_SESSIONS_VIEW });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	private async checkDayChange(): Promise<void> {
@@ -796,12 +794,12 @@ export default class ManagerPlugin extends Plugin {
 	async openInboxView(): Promise<void> {
 		const { workspace } = this.app;
 		const existing = workspace.getLeavesOfType(TIME_MANAGER_INBOX_VIEW);
-		if (existing.length > 0) { workspace.revealLeaf(existing[0]); return; }
+		if (existing.length > 0) { await workspace.revealLeaf(existing[0]); return; }
 		const leaf = this.settings.time.inboxSide === "right"
 			? workspace.getRightLeaf(false) ?? workspace.getLeaf(true)
 			: workspace.getLeftLeaf(false) ?? workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_INBOX_VIEW, active: true });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	refreshInboxView(): void {
@@ -813,10 +811,10 @@ export default class ManagerPlugin extends Plugin {
 	async openInboxTabView(): Promise<void> {
 		const { workspace } = this.app;
 		const existing = workspace.getLeavesOfType(TIME_MANAGER_INBOX_TAB_VIEW);
-		if (existing.length > 0) { workspace.revealLeaf(existing[0]); return; }
+		if (existing.length > 0) { await workspace.revealLeaf(existing[0]); return; }
 		const leaf = workspace.getLeaf(true);
 		await leaf.setViewState({ type: TIME_MANAGER_INBOX_TAB_VIEW, active: true });
-		workspace.revealLeaf(leaf);
+		await workspace.revealLeaf(leaf);
 	}
 
 	private refreshReminderChip(): void {
@@ -854,9 +852,11 @@ export default class ManagerPlugin extends Plugin {
 		if (this.linearSyncIntervalId !== null) { window.clearInterval(this.linearSyncIntervalId); this.linearSyncIntervalId = null; }
 		const mins = this.taskSettings.linearSyncIntervalMinutes;
 		if (mins > 0 && this.linearManager) {
-			this.linearSyncIntervalId = window.setInterval(async () => {
-				const { updated } = await this.linearManager!.pullAll();
-				if (updated > 0) new Notice(`Linear: pulled ${updated} update${updated === 1 ? "" : "s"}.`);
+			this.linearSyncIntervalId = window.setInterval(() => {
+				void (async () => {
+					const { updated } = await this.linearManager!.pullAll();
+					if (updated > 0) new Notice(`Linear: pulled ${updated} update${updated === 1 ? "" : "s"}.`);
+				})();
 			}, mins * 60 * 1000);
 		}
 	}
@@ -1029,7 +1029,7 @@ export default class ManagerPlugin extends Plugin {
 		without.splice(newStatus === "done" ? currentIdx : currentIdx + 1, 0, targetItem);
 
 		for (let i = 0; i < without.length; i++) {
-			const itm = without[i]!;
+			const itm = without[i];
 			await this.app.fileManager.processFrontMatter(itm.file, (front: Record<string, unknown>) => {
 				front[chain.positionKey] = i + 1;
 				if (itm.role === "current") front[chain.statusKey] = chain.currentStatusValue;
@@ -1154,23 +1154,22 @@ export default class ManagerPlugin extends Plugin {
 	private openStatusBarChainPicker(): void {
 		const active = this.taskSettings.chains.filter((c) => this.findCurrentTask(c) !== undefined);
 		if (active.length === 0) { void this.openChainView(); return; }
-		new ChainSuggestModal(this.app, active, async (chain) => {
+		new ChainSuggestModal(this.app, active, (chain) => {
 			this.settings.tasks.statusBarChainIdKey = chain.idKey;
-			await this.saveSettings();
-			this.renderChainBreadcrumb();
+			void this.saveSettings().then(() => this.renderChainBreadcrumb());
 		}).open();
 	}
 
 	private positionChainBar(): void {
 		const el = this.chainStatusBarItem;
 		const position = this.taskSettings.chainBarPosition ?? "center";
-		el.style.left = "auto"; el.style.right = "auto"; el.style.transform = "";
+		el.setCssStyles({ left: "auto", right: "auto", transform: "" });
 		if (position === "right") {
 			const statusBar = document.querySelector<HTMLElement>(".status-bar");
 			if (!statusBar) return;
-			el.style.right = `${window.innerWidth - statusBar.getBoundingClientRect().left + 4}px`;
-		} else if (position === "center") { el.style.left = "50%"; el.style.transform = "translateX(-50%)"; }
-		else { el.style.left = "12px"; }
+			el.setCssStyles({ right: `${window.innerWidth - statusBar.getBoundingClientRect().left + 4}px` });
+		} else if (position === "center") { el.setCssStyles({ left: "50%", transform: "translateX(-50%)" }); }
+		else { el.setCssStyles({ left: "12px" }); }
 	}
 
 	private setupStatusBarObserver(): void {
@@ -1190,7 +1189,7 @@ export default class ManagerPlugin extends Plugin {
 			setTooltip(el, "Start a chain", { delay: 0, placement: "top" });
 			const addBtn = el.createSpan({ cls: "chain-sb-add-btn chain-sb-add-btn--start" });
 			setIcon(addBtn, "plus");
-			addBtn.addEventListener("click", async (e) => {
+			addBtn.addEventListener("click", (e) => {
 				e.stopPropagation();
 				const file = this.app.workspace.getActiveFile();
 				new CreateChainModal(this.app, async (name) => {
@@ -1204,7 +1203,7 @@ export default class ManagerPlugin extends Plugin {
 		} else {
 			const iconEl = el.createSpan({ cls: "chain-sb-chain-icon" });
 			setIcon(iconEl, "link");
-			setTooltip(iconEl, this.taskSettings.chains.length === 1 ? this.taskSettings.chains[0]!.name : "Chains", { delay: 0, placement: "top" });
+			setTooltip(iconEl, this.taskSettings.chains.length === 1 ? this.taskSettings.chains[0].name : "Chains", { delay: 0, placement: "top" });
 			setIcon(el.createSpan({ cls: "chain-sb-arrow" }), "chevron-right");
 			const addBtn = el.createSpan({ cls: "chain-sb-add-btn" });
 			setIcon(addBtn, "plus");
@@ -1227,7 +1226,7 @@ export default class ManagerPlugin extends Plugin {
 		const chainsWithCurrent = this.taskSettings.chains.filter((c) => this.findCurrentTask(c) !== undefined);
 		if (chainsWithCurrent.length === 0) { this.renderEmptyChainBar(el); this.positionChainBar(); return; }
 
-		const chain = (this.taskSettings.statusBarChainIdKey ? chainsWithCurrent.find((c) => c.idKey === this.taskSettings.statusBarChainIdKey) : undefined) ?? chainsWithCurrent[0]!;
+		const chain = (this.taskSettings.statusBarChainIdKey ? chainsWithCurrent.find((c) => c.idKey === this.taskSettings.statusBarChainIdKey) : undefined) ?? chainsWithCurrent[0];
 		const currentTask = this.findCurrentTask(chain);
 		if (!currentTask) { this.positionChainBar(); return; }
 
@@ -1249,9 +1248,9 @@ export default class ManagerPlugin extends Plugin {
 			if (fromIdx === toIdx) return;
 			const reordered = [...items];
 			const [moved] = reordered.splice(fromIdx, 1);
-			reordered.splice(toIdx, 0, moved!);
+			reordered.splice(toIdx, 0, moved);
 			for (let i = 0; i < reordered.length; i++) {
-				await this.app.fileManager.processFrontMatter(reordered[i]!.file, (fm: Record<string, unknown>) => { fm[chain.positionKey] = i + 1; });
+				await this.app.fileManager.processFrontMatter(reordered[i].file, (fm: Record<string, unknown>) => { fm[chain.positionKey] = i + 1; });
 			}
 			this.renderChainBreadcrumb();
 		};
@@ -1271,8 +1270,8 @@ export default class ManagerPlugin extends Plugin {
 				node.draggable = true;
 				node.addEventListener("dragstart", (e) => { dragSrcIdx = idx; e.dataTransfer?.setData("text/plain", item.file.path); node.addClass("is-dragging"); });
 				node.addEventListener("dragend", () => { dragSrcIdx = -1; node.removeClass("is-dragging"); });
-				node.addEventListener("click", async (e) => { e.stopPropagation(); await this.openFileRespectingPin(item.file); });
-				node.addEventListener("keydown", async (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); await this.openFileRespectingPin(item.file); } });
+				node.addEventListener("click", (e) => { e.stopPropagation(); void this.openFileRespectingPin(item.file); });
+				node.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void this.openFileRespectingPin(item.file); } });
 				node.addEventListener("contextmenu", (e) => {
 					e.stopPropagation();
 					const menu = new Menu();
@@ -1285,6 +1284,7 @@ export default class ManagerPlugin extends Plugin {
 				const node = scrollEl.createSpan({ cls: `chain-sb-node chain-sb-node--${item.role}${isOpen ? " is-open" : ""}`, attr: { tabindex: "0", role: "button" } });
 				if (isOpen) openFileNode = node;
 				if (item.role === "previous" || item.role === "ready") setIcon(node, "check");
+				// eslint-disable-next-line no-unsanitized/property -- HALF_CIRCLE_SVG is a hardcoded literal, not user-controlled
 				if (item.role === "inProgress") node.innerHTML = HALF_CIRCLE_SVG;
 				setTooltip(node, item.file.basename, { delay: 0, placement: "top" });
 				node.draggable = true;
@@ -1302,7 +1302,7 @@ export default class ManagerPlugin extends Plugin {
 					else node.addClass("chain-sb-drop-after");
 				});
 				node.addEventListener("dragleave", () => { node.removeClass("chain-sb-drop-before"); node.removeClass("chain-sb-drop-after"); });
-				node.addEventListener("drop", async (e) => {
+				node.addEventListener("drop", (e) => {
 					e.preventDefault();
 					node.removeClass("chain-sb-drop-before"); node.removeClass("chain-sb-drop-after");
 					if (dragSrcIdx < 0 || dragSrcIdx === idx) return;
@@ -1312,10 +1312,10 @@ export default class ManagerPlugin extends Plugin {
 					if (insertAfter && dragSrcIdx < idx) target = idx;
 					else if (insertAfter && dragSrcIdx > idx) target = idx + 1;
 					else if (!insertAfter && dragSrcIdx < idx) target = idx - 1;
-					await reorder(dragSrcIdx, target);
+					void reorder(dragSrcIdx, target);
 				});
-				node.addEventListener("click", async (e) => { e.stopPropagation(); await this.openFileRespectingPin(item.file); });
-				node.addEventListener("keydown", async (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); await this.openFileRespectingPin(item.file); } });
+				node.addEventListener("click", (e) => { e.stopPropagation(); void this.openFileRespectingPin(item.file); });
+				node.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); void this.openFileRespectingPin(item.file); } });
 				node.addEventListener("contextmenu", (e) => {
 					e.stopPropagation();
 					const menu = new Menu();
@@ -1331,7 +1331,7 @@ export default class ManagerPlugin extends Plugin {
 			}
 		});
 
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			const maxVisible = this.taskSettings.statusBarDisplayMode === "filenames"
 				? (this.taskSettings.statusBarMaxItems ?? 5)
 				: (this.taskSettings.statusBarDotsCount ?? 7);
@@ -1406,7 +1406,7 @@ async function migrateFromLegacyPlugins(
 	}
 
 	if (didMigrate) {
-		new Notice("Manager: settings imported from Time Tools and Task Tools.", 6000);
+		new Notice("Manager: settings imported from time tools and task tools.", 6000);
 	}
 
 	return result;
@@ -1446,8 +1446,8 @@ function mergeSettings(defaults: ManagerSettings, saved: Partial<ManagerSettings
 		timelineSide:               savedTime.timelineSide               ?? defaults.time.timelineSide,
 		agendaSide:                 savedTime.agendaSide                 ?? defaults.time.agendaSide,
 		inboxSide:                  savedTime.inboxSide                  ?? defaults.time.inboxSide,
-		agendaWorkSection: (savedTime.agendaWorkSection ?? defaults.time.agendaWorkSection) as "tasks" | "targets",
-		agendaTaskFilter:  (savedTime.agendaTaskFilter  ?? defaults.time.agendaTaskFilter)  as "all" | "open" | "done",
+		agendaWorkSection: (savedTime.agendaWorkSection ?? defaults.time.agendaWorkSection),
+		agendaTaskFilter:  (savedTime.agendaTaskFilter  ?? defaults.time.agendaTaskFilter),
 	};
 
 	return {

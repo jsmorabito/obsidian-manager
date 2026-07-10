@@ -48,7 +48,7 @@ export class ReminderChipManager {
 		}
 
 		// Defer to next frame so the view-header DOM is ready.
-		this.rafId = requestAnimationFrame(() => {
+		this.rafId = window.requestAnimationFrame(() => {
 			this.rafId = null;
 			// Re-read reminder in case it changed.
 			const r = this.reminderService.getReminder(file);
@@ -80,7 +80,7 @@ export class ReminderChipManager {
 		const viewActions = containerEl?.querySelector<HTMLElement>(".view-actions");
 		if (!viewActions) return null;
 
-		const chip = createEl("div", { cls: CHIP_CLASS });
+		const chip = createDiv({ cls: CHIP_CLASS });
 		chip.setAttribute("role", "button");
 		chip.setAttribute("tabindex", "0");
 		chip.setAttribute("aria-label", "Reminder");

@@ -27,14 +27,14 @@ export class SnoozePopover {
 		onSnoozed: () => void,
 	) {
 		this._el = document.body.createDiv({ cls: POPOVER_CLASS });
-		this._el.createEl("div", { text: "Snooze until…", cls: "tm-inbox-snooze-popover-title" });
+		this._el.createDiv({ text: "Snooze until…", cls: "tm-inbox-snooze-popover-title" });
 
 		const list = this._el.createDiv({ cls: "tm-inbox-snooze-popover-list" });
 
 		for (const preset of getSnoozePresets()) {
 			const btn = list.createEl("button", { cls: "tm-inbox-snooze-popover-btn" });
-			btn.createEl("span", { text: preset.label, cls: "tm-inbox-snooze-popover-label" });
-			btn.createEl("span", { text: preset.sublabel, cls: "tm-inbox-snooze-popover-sublabel" });
+			btn.createSpan({ text: preset.label, cls: "tm-inbox-snooze-popover-label" });
+			btn.createSpan({ text: preset.sublabel, cls: "tm-inbox-snooze-popover-sublabel" });
 			btn.addEventListener("click", () => {
 				void plugin.inboxService.snoozeItem(file, preset.getTime()).then(() => {
 					this._dismiss();
@@ -44,7 +44,7 @@ export class SnoozePopover {
 		}
 
 		const customBtn = list.createEl("button", { cls: "tm-inbox-snooze-popover-btn tm-inbox-snooze-popover-custom" });
-		customBtn.createEl("span", { text: "Custom…", cls: "tm-inbox-snooze-popover-label" });
+		customBtn.createSpan({ text: "Custom…", cls: "tm-inbox-snooze-popover-label" });
 		customBtn.addEventListener("click", () => {
 			this._dismiss();
 			new SnoozeModal(plugin.app, (remindAt) => {
@@ -57,7 +57,7 @@ export class SnoozePopover {
 		this._outsideClickHandler = (e: MouseEvent) => {
 			if (!this._el.contains(e.target as Node | null)) this._dismiss();
 		};
-		setTimeout(() => {
+		window.setTimeout(() => {
 			document.addEventListener("mousedown", this._outsideClickHandler, { capture: true });
 		}, 0);
 

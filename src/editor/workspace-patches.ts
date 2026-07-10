@@ -8,15 +8,15 @@
 // Also patches the community "recent-files-obsidian" plugin (if installed) so
 // that files opened inside our editor view don't pollute the recent-files list.
 //
-// `this: any` annotations are intentional: monkey-around installs these as
-// prototype methods, so `this` is dynamically the host object (Workspace or
-// WorkspaceLeaf) rather than something we can name statically without
-// dragging private types into the public surface.
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 import { around } from "monkey-around";
 import {
+	Constructor,
+	MarkdownFileInfo,
+	OpenViewState,
 	Plugin,
 	requireApiVersion,
+	TFile,
+	View,
 	Workspace,
 	WorkspaceContainer,
 	WorkspaceItem,
@@ -29,20 +29,24 @@ export function installWorkspacePatches(plugin: Plugin): void {
 	let layoutChanging = false;
 
 	plugin.register(
-		around(Workspace.prototype as any, {
-			getActiveViewOfType: (next: any) =>
-				function (this: any, t: any) {
+		around(Workspace.prototype, {
+			getActiveViewOfType(next) {
+				const wrapped = function (this: Workspace, t: Constructor<View>): View | null {
 					const result = next.call(this, t);
-					if (!result && t?.VIEW_TYPE === "markdown") {
+					if (!result && (t as unknown as { VIEW_TYPE?: string })?.VIEW_TYPE === "markdown") {
 						const activeLeaf = this.activeLeaf;
 						if (activeLeaf?.view instanceof DailyNoteView) {
-							return activeLeaf.view.editMode;
+							// The embedded editor's editMode stands in for a real MarkdownView here —
+							// callers only touch members the two shapes share at runtime.
+							return (activeLeaf.view as unknown as { editMode?: View }).editMode ?? null;
 						}
 					}
 					return result;
-				},
-			changeLayout(old: any) {
-				return async function (this: any, workspace: unknown) {
+				};
+				return wrapped as typeof next;
+			},
+			changeLayout(old) {
+				return async function (this: Workspace, workspace: unknown) {
 					layoutChanging = true;
 					try {
 						await old.call(this, workspace);
@@ -51,21 +55,21 @@ export function installWorkspacePatches(plugin: Plugin): void {
 					}
 				};
 			},
-			iterateLeaves(old: any) {
+			iterateLeaves(old) {
 				type leafIterator = (item: WorkspaceLeaf) => boolean | void;
-				return function (this: any, arg1: any, arg2: any) {
-					if (old.call(this, arg1, arg2)) return true;
+				const wrapped = function (this: Workspace, arg1: unknown, arg2: unknown) {
+					if ((old as unknown as (a: unknown, b: unknown) => boolean).call(this, arg1, arg2)) return true;
 					const cb: leafIterator =
-						typeof arg1 === "function" ? arg1 : arg2;
+						typeof arg1 === "function" ? (arg1 as leafIterator) : (arg2 as leafIterator);
 					const parent: WorkspaceItem =
-						typeof arg1 === "function" ? arg2 : arg1;
+						typeof arg1 === "function" ? (arg2 as WorkspaceItem) : (arg1 as WorkspaceItem);
 
 					if (!parent) return false;
 					if (layoutChanging) return false;
 
 					if (!requireApiVersion("0.15.0")) {
 						if (
-							parent === this.app.workspace.rootSplit ||
+							parent === this.rootSplit ||
 							(WorkspaceContainer && parent instanceof WorkspaceContainer)
 						) {
 							for (const popover of DailyNoteEditor.popoversForWindow(
@@ -77,69 +81,81 @@ export function installWorkspacePatches(plugin: Plugin): void {
 					}
 					return false;
 				};
+				return wrapped as typeof old;
 			},
-			setActiveLeaf: (next: any) =>
-				function (this: any, e: WorkspaceLeaf, t?: any) {
-					if ((e as any).parentLeaf) {
-						(e as any).parentLeaf.activeTime = 1700000000000;
-						next.call(this, (e as any).parentLeaf, t);
-						if ((e.view as any).editMode) {
-							this.activeEditor = e.view;
-							(e as any).parentLeaf.view.editMode = e.view;
+			setActiveLeaf(nextRaw) {
+				// Narrow to the (leaf, params?) overload — the only one this patch calls.
+				const next = nextRaw as (leaf: WorkspaceLeaf, params?: { focus?: boolean }) => void;
+				const wrapped = function (this: Workspace, e: WorkspaceLeaf, t?: { focus?: boolean }) {
+					if (e.parentLeaf) {
+						e.parentLeaf.activeTime = 1700000000000;
+						next.call(this, e.parentLeaf, t);
+						if ((e.view as unknown as { editMode?: unknown }).editMode) {
+							// e.view stands in for a MarkdownFileInfo here — runtime duck-typing,
+							// same as the editMode substitution in getActiveViewOfType above.
+							this.activeEditor = e.view as unknown as MarkdownFileInfo;
+							(e.parentLeaf.view as unknown as { editMode: unknown }).editMode = e.view;
 						}
 						return;
 					}
 					return next.call(this, e, t);
-				},
+				};
+				return wrapped as typeof nextRaw;
+			},
 		})
 	);
 
 	plugin.register(
 		around(WorkspaceLeaf.prototype, {
-			getRoot(old: any) {
-				return function (this: any) {
-					const top = old.call(this);
+			getRoot(old) {
+				const wrapped = function (this: WorkspaceLeaf): WorkspaceItem {
+					const top = old.call(this) as WorkspaceLeaf;
 					return top?.getRoot === this.getRoot ? top : top?.getRoot();
 				};
+				return wrapped as typeof old;
 			},
-			setPinned(old: any) {
-				return function (this: any, pinned: boolean) {
+			setPinned(old) {
+				const wrapped = function (this: WorkspaceLeaf, pinned: boolean) {
 					old.call(this, pinned);
 					if (isDailyNoteLeaf(this) && !pinned) this.setPinned(true);
 				};
+				return wrapped as typeof old;
 			},
-			openFile(old: any) {
-				return function (this: any, file: any, openState?: any) {
+			openFile(old) {
+				const wrapped = function (this: WorkspaceLeaf, file: TFile, openState?: OpenViewState) {
 					if (isDailyNoteLeaf(this)) {
 						// Suppress Obsidian's built-in recent-opened-file tracking.
-						setTimeout(
-							around(Workspace.prototype as any, {
-								recordMostRecentOpenedFile(old: any) {
-									return function (this: any, _file: any) {
-										if (_file !== file) return old.call(this, _file);
+						window.setTimeout(
+							around(Workspace.prototype, {
+								recordMostRecentOpenedFile(recordOld) {
+									return function (this: Workspace, _file: TFile) {
+										if (_file !== file) return recordOld.call(this, _file);
 									};
 								},
 							}),
 							1
 						);
 
-						// Suppress the community "recent-files-obsidian" plugin if present.
-						const recentFilesPlugin = (plugin.app as any).plugins?.plugins?.[
+						// "recent-files-obsidian" is a third-party community plugin with no
+						// published types; its handleOpen method isn't part of our own
+						// public-API augmentations above.
+						const recentFilesPlugin = plugin.app.plugins?.plugins?.[
 							"recent-files-obsidian"
-						];
+						] as { handleOpen?: (f: TFile) => void } | undefined;
 						if (recentFilesPlugin?.handleOpen) {
 							const origHandleOpen = recentFilesPlugin.handleOpen.bind(recentFilesPlugin);
-							recentFilesPlugin.handleOpen = (f: any) => {
+							recentFilesPlugin.handleOpen = (f: TFile) => {
 								if (f === file) return;
 								origHandleOpen(f);
 							};
-							setTimeout(() => {
+							window.setTimeout(() => {
 								recentFilesPlugin.handleOpen = origHandleOpen;
 							}, 50);
 						}
 					}
 					return old.call(this, file, openState);
 				};
+				return wrapped as typeof old;
 			},
 		})
 	);

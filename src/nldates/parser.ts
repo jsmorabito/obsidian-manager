@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import * as chrono from "chrono-node";
 import type { Chrono } from "chrono-node";
 import { Parser } from "chrono-node";

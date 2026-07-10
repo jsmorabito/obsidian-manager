@@ -41,13 +41,18 @@ export class ReminderService {
 			date = rawDate.slice(0, 10); // strip any time component
 		} else if (rawDate instanceof Date) {
 			date = rawDate.toISOString().slice(0, 10);
-		} else {
+		} else if (typeof rawDate === "number" || typeof rawDate === "boolean") {
 			date = String(rawDate).slice(0, 10);
+		} else {
+			return null;
 		}
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
 
 		const rawTime = fm?.[FM_REMINDER_TIME];
-		const time = rawTime != null ? String(rawTime) : undefined;
+		const time =
+			typeof rawTime === "string" || typeof rawTime === "number" || typeof rawTime === "boolean"
+				? String(rawTime)
+				: undefined;
 		return { date, time };
 	}
 

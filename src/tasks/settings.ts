@@ -1,4 +1,4 @@
-import { AbstractInputSuggest, App, PluginSettingTab, Setting, TFile } from "obsidian";
+import { AbstractInputSuggest, App, PluginSettingTab, Setting, SettingDefinitionItem, TFile } from "obsidian";
 import type { ChainDefinition, FrontmatterRule, LinearWorkspaceConfig } from "./types";
 import { buildIconEl, CheckboxStatus, DEFAULT_CHECKBOX_STATUSES } from "./checkboxIcons";
 import TaskToolsPlugin from "./main";
@@ -102,11 +102,247 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	display(): void {
-		this.refresh();
+	getControlValue(key: string): unknown {
+		return (this.plugin.taskSettings as unknown as Record<string, unknown>)[key];
 	}
 
-	private refresh(): void {
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === "taskFolder" && typeof value === "string") value = value.trim();
+		else if (key === "linearIssueFolder" && typeof value === "string") value = value.trim() || "Linear";
+
+		(this.plugin.taskSettings as unknown as Record<string, unknown>)[key] = value;
+		await this.plugin.saveSettings();
+
+		if (key === "linearSyncIntervalMinutes") this.plugin.rescheduleLinearSync();
+		if (key === "statusBarDisplayMode" || key === "enableCheckboxIcons") this.refreshDomState();
+	}
+
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		const t = this.plugin.taskSettings;
+
+		return [
+			{
+				type: "group",
+				heading: "Task file detection",
+				items: [
+					{
+						name: "Frontmatter key",
+						desc: "The frontmatter key used to identify a file as a task.",
+						control: { type: "text", key: "taskFrontmatterKey", placeholder: "Type" },
+					},
+					{
+						name: "Frontmatter value",
+						desc: "Only files where the key equals this value are treated as tasks. Leave empty to match any file that has the key.",
+						control: { type: "text", key: "taskFrontmatterValue", placeholder: "Task" },
+					},
+					{
+						name: "Task folder",
+						desc: "Folder where new task files are created. Leave empty for vault root.",
+						control: { type: "text", key: "taskFolder", placeholder: "Tasks" },
+					},
+					{
+						name: "Task template",
+						desc: "Optional template file. Its content is used as the body of new tasks; its frontmatter is merged with chain frontmatter (plugin keys take precedence).",
+						render: (setting) => {
+							setting.addText((text) => {
+								new FileSuggest(this.app, text.inputEl);
+								text
+									.setPlaceholder("Templates/task-template.md")
+									.setValue(this.plugin.taskSettings.taskTemplatePath)
+									.onChange(async (value) => {
+										this.plugin.taskSettings.taskTemplatePath = value.trim();
+										await this.plugin.saveSettings();
+									});
+							});
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Status bar",
+				items: [
+					{
+						name: "Display mode",
+						desc: "How items are shown in the status bar breadcrumb.",
+						control: {
+							type: "dropdown",
+							key: "statusBarDisplayMode",
+							options: { filenames: "File names", dots: "Dots" },
+						},
+					},
+					{
+						name: "Visible dots",
+						desc: "Maximum number of dots shown at once. The window stays centered on the current task.",
+						control: { type: "slider", key: "statusBarDotsCount", min: 3, max: 15, step: 2 },
+						visible: () => t.statusBarDisplayMode === "dots",
+					},
+					{
+						name: "Max visible items",
+						desc: "Number of chain items shown before the bar scrolls horizontally. Increase for wider bars, decrease for a more compact bar.",
+						control: { type: "slider", key: "statusBarMaxItems", min: 2, max: 20, step: 1 },
+						visible: () => t.statusBarDisplayMode === "filenames",
+					},
+					{
+						name: "Chain bar position",
+						desc: "Where the chain breadcrumb bar appears at the bottom of the screen.",
+						control: {
+							type: "dropdown",
+							key: "chainBarPosition",
+							options: { left: "Left", center: "Center", right: "Right (next to status bar)" },
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Checkbox icons",
+				items: [
+					{
+						name: "Checkbox icons",
+						searchable: false,
+						render: (setting, group) => {
+							setting.settingEl.remove();
+							group.listEl.createEl("p", {
+								text: "Replace standard checkboxes in reading view with styled icon characters. Click an icon to cycle through statuses.",
+								cls: "setting-item-description",
+							});
+						},
+					},
+					{
+						name: "Enable checkbox icons",
+						desc: "Show custom icon characters instead of native checkboxes in reading view.",
+						control: { type: "toggle", key: "enableCheckboxIcons" },
+					},
+					{
+						name: "Checkbox status cycle",
+						searchable: false,
+						visible: () => t.enableCheckboxIcons,
+						render: (setting, group) => {
+							setting.settingEl.remove();
+							this.renderCheckboxStatusList(group.listEl);
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Chain schemas",
+				items: [
+					{
+						name: "Chain schemas",
+						desc: "Each schema defines a set of frontmatter keys for one chain type. A note participates in a chain by having that schema's keys in its frontmatter.",
+						render: (setting, group) => {
+							setting.settingEl.remove();
+							group.listEl.createEl("p", {
+								text: "Each schema defines a set of frontmatter keys for one chain type. A note participates in a chain by having that schema's keys in its frontmatter.",
+								cls: "setting-item-description",
+							});
+							this.plugin.taskSettings.chains.forEach((chain, idx) => {
+								this.renderChainSchema(group.listEl, chain, idx);
+							});
+							new Setting(group.listEl).addButton((btn) =>
+								btn
+									.setButtonText("Add chain schema")
+									.setCta()
+									.onClick(async () => {
+										const newName = "New Chain";
+										this.plugin.taskSettings.chains.push({
+											name: newName,
+											...derivedChainKeys(slugifyChainName(newName)),
+											currentStatusValue: "current",
+											completedStatusValue: "done",
+											readyStatusValue: "ready",
+										});
+										await this.plugin.saveSettings();
+										this.update();
+									})
+							);
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Linear integration",
+				items: [
+					{
+						name: "Issue folder",
+						desc: "Folder where imported linear issues are created.",
+						control: { type: "text", key: "linearIssueFolder", placeholder: "Linear" },
+					},
+					{
+						name: "Issue template",
+						desc: "Optional template file applied on top of imported linear issues. Its frontmatter is merged with the linear-managed frontmatter (linear keys take precedence); its body replaces the default note body. Supports {{title}}, {{identifier}}, {{url}}, {{status}}, {{priority}}, {{team}}.",
+						render: (setting) => {
+							setting.addText((text) => {
+								new FileSuggest(this.app, text.inputEl);
+								text
+									.setPlaceholder("Templates/linear-issue-template.md")
+									.setValue(this.plugin.taskSettings.linearTemplatePath)
+									.onChange(async (value) => {
+										this.plugin.taskSettings.linearTemplatePath = value.trim();
+										await this.plugin.saveSettings();
+									});
+							});
+						},
+					},
+					{
+						name: "Sync on open",
+						desc: "Pull status updates from linear when Obsidian opens.",
+						control: { type: "toggle", key: "linearSyncOnOpen" },
+					},
+					{
+						name: "Auto-sync interval (minutes)",
+						desc: "Poll linear for updates on this interval. Set to 0 to disable.",
+						control: { type: "slider", key: "linearSyncIntervalMinutes", min: 0, max: 120, step: 15 },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Workspaces",
+				items: [
+					{
+						name: "Workspaces",
+						desc: "Each workspace connects to one linear organization. You can use a personal API key (paste from linear → settings → API) or OAuth.",
+						render: (setting, group) => {
+							setting.settingEl.remove();
+							group.listEl.createEl("p", {
+								text: "Each workspace connects to one linear organization. You can use a personal API key (paste from linear → settings → API) or OAUTH.",
+								cls: "setting-item-description",
+							});
+							const wsContainer = group.listEl.createDiv({ cls: "linear-workspace-list" });
+							this.renderWorkspaceList(wsContainer);
+							new Setting(group.listEl).addButton((btn) =>
+								btn
+									.setButtonText("Add workspace")
+									.setCta()
+									.onClick(async () => {
+										this.plugin.taskSettings.linearWorkspaces.push({
+											id: `workspace-${Date.now()}`,
+											name: "New Workspace",
+											authType: "apiKey",
+										});
+										await this.plugin.saveSettings();
+										this.update();
+									})
+							);
+						},
+					},
+				],
+			},
+		];
+	}
+
+	/**
+	 * Imperative fallback, used when this tab is embedded manually (see
+	 * TaskSettingPage in ../settings.ts, which calls display() directly
+	 * rather than going through Obsidian's own declarative-tab dispatch).
+	 * Kept in sync with getSettingDefinitions() above; both render the same
+	 * settings via the same private helpers.
+	 */
+	display(): void {
 		const { containerEl } = this;
 		const scrollEl = containerEl.closest(".vertical-tab-content");
 		const scrollTop = scrollEl?.scrollTop ?? 0;
@@ -253,7 +489,7 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 				toggle.setValue(this.plugin.taskSettings.enableCheckboxIcons).onChange(async (value) => {
 					this.plugin.taskSettings.enableCheckboxIcons = value;
 					await this.plugin.saveSettings();
-					this.refresh();
+					this.display();
 				})
 			);
 
@@ -286,12 +522,90 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 						readyStatusValue: "ready",
 					});
 					await this.plugin.saveSettings();
-					this.refresh();
+					this.display();
 				})
 		);
 
 		// ── Linear integration ───────────────────────────────────────────────
-		this.renderLinearSettings(containerEl);
+		new Setting(containerEl).setName("Linear integration").setHeading();
+
+		new Setting(containerEl)
+			.setName("Issue folder")
+			.setDesc("Folder where imported linear issues are created.")
+			.addText((text) =>
+				text
+					.setPlaceholder("Linear")
+					.setValue(this.plugin.taskSettings.linearIssueFolder)
+					.onChange(async (value) => {
+						this.plugin.taskSettings.linearIssueFolder = value.trim() || "Linear";
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Issue template")
+			.setDesc(
+				"Optional template file applied on top of imported linear issues. Its frontmatter is merged with the linear-managed frontmatter (linear keys take precedence); its body replaces the default note body. Supports {{title}}, {{identifier}}, {{url}}, {{status}}, {{priority}}, {{team}}."
+			)
+			.addText((text) => {
+				new FileSuggest(this.app, text.inputEl);
+				text
+					.setPlaceholder("Templates/linear-issue-template.md")
+					.setValue(this.plugin.taskSettings.linearTemplatePath)
+					.onChange(async (value) => {
+						this.plugin.taskSettings.linearTemplatePath = value.trim();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Sync on open")
+			.setDesc("Pull status updates from linear when Obsidian opens.")
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.taskSettings.linearSyncOnOpen).onChange(async (value) => {
+					this.plugin.taskSettings.linearSyncOnOpen = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName("Auto-sync interval (minutes)")
+			.setDesc("Poll linear for updates on this interval. Set to 0 to disable.")
+			.addSlider((slider) =>
+				slider
+					.setLimits(0, 120, 15)
+					.setValue(this.plugin.taskSettings.linearSyncIntervalMinutes)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.taskSettings.linearSyncIntervalMinutes = value;
+						await this.plugin.saveSettings();
+						this.plugin.rescheduleLinearSync();
+					})
+			);
+
+		new Setting(containerEl).setName("Workspaces").setHeading();
+		containerEl.createEl("p", {
+			text: "Each workspace connects to one linear organization. You can use a personal API key (paste from linear → settings → API) or OAUTH.",
+			cls: "setting-item-description",
+		});
+
+		const wsContainer = containerEl.createDiv({ cls: "linear-workspace-list" });
+		this.renderWorkspaceList(wsContainer);
+
+		new Setting(containerEl).addButton((btn) =>
+			btn
+				.setButtonText("Add workspace")
+				.setCta()
+				.onClick(async () => {
+					this.plugin.taskSettings.linearWorkspaces.push({
+						id: `workspace-${Date.now()}`,
+						name: "New Workspace",
+						authType: "apiKey",
+					});
+					await this.plugin.saveSettings();
+					this.display();
+				})
+		);
 
 		if (scrollEl) scrollEl.scrollTop = scrollTop;
 	}
@@ -301,19 +615,18 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 		chain: ChainDefinition,
 		idx: number
 	): void {
-		const section = containerEl.createEl("div", { cls: "chain-schema-section" });
+		const section = containerEl.createDiv({ cls: "chain-schema-section" });
 
-		const headerEl = section.createEl("div", { cls: "chain-schema-header" });
+		const headerEl = section.createDiv({ cls: "chain-schema-header" });
 		const h3 = new Setting(headerEl).setName("").setHeading();
 
 		const removeBtn = headerEl.createEl("button", {
 			text: "Remove",
 			cls: "chain-schema-remove-btn",
 		});
-		removeBtn.addEventListener("click", async () => {
+		removeBtn.addEventListener("click", () => {
 			this.plugin.taskSettings.chains.splice(idx, 1);
-			await this.plugin.saveSettings();
-			this.refresh();
+			void this.plugin.saveSettings().then(() => this.display());
 		});
 
 		// Refs to derived-key inputs so we can update them in-place when the name changes
@@ -481,17 +794,17 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 		const chain = this.plugin.taskSettings.chains[chainIdx];
 		if (!chain) return;
 
-		const wrapper = containerEl.createEl("div", { cls: "chain-rule-list" });
+		const wrapper = containerEl.createDiv({ cls: "chain-rule-list" });
 		wrapper.createEl("p", { text: label, cls: "setting-item-name" });
 		wrapper.createEl("p", { text: desc, cls: "setting-item-description" });
 
-		const listEl = wrapper.createEl("div", { cls: "chain-rule-rows" });
+		const listEl = wrapper.createDiv({ cls: "chain-rule-rows" });
 
 		const refresh = () => {
 			listEl.empty();
 			const currentRules: FrontmatterRule[] = this.plugin.taskSettings.chains[chainIdx]?.[field] ?? [];
 			currentRules.forEach((rule, ruleIdx) => {
-				const row = listEl.createEl("div", { cls: "chain-rule-row" });
+				const row = listEl.createDiv({ cls: "chain-rule-row" });
 
 				const keyInput = row.createEl("input", {
 					type: "text",
@@ -499,12 +812,12 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 					cls: "chain-rule-input",
 				});
 				keyInput.value = rule.key;
-				keyInput.addEventListener("change", async () => {
+				keyInput.addEventListener("change", () => {
 					const c = this.plugin.taskSettings.chains[chainIdx];
 					if (c) {
 						if (!c[field]) c[field] = [];
-						c[field][ruleIdx]!.key = keyInput.value.trim();
-						await this.plugin.saveSettings();
+						c[field][ruleIdx].key = keyInput.value.trim();
+						void this.plugin.saveSettings();
 					}
 				});
 
@@ -514,24 +827,23 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 					cls: "chain-rule-input",
 				});
 				valInput.value = rule.value ?? "";
-				valInput.addEventListener("change", async () => {
+				valInput.addEventListener("change", () => {
 					const c = this.plugin.taskSettings.chains[chainIdx];
 					if (c) {
 						if (!c[field]) c[field] = [];
 						const trimmed = valInput.value.trim();
-						c[field][ruleIdx]!.value = trimmed || undefined;
-						await this.plugin.saveSettings();
+						c[field][ruleIdx].value = trimmed || undefined;
+						void this.plugin.saveSettings();
 					}
 				});
 
 				const removeBtn = row.createEl("button", { text: "×", cls: "chain-rule-remove" });
 				removeBtn.setAttribute("aria-label", "Remove rule");
-				removeBtn.addEventListener("click", async () => {
+				removeBtn.addEventListener("click", () => {
 					const c = this.plugin.taskSettings.chains[chainIdx];
 					if (c) {
 						c[field] = (c[field] ?? []).filter((_, i) => i !== ruleIdx);
-						await this.plugin.saveSettings();
-						refresh();
+						void this.plugin.saveSettings().then(refresh);
 					}
 				});
 			});
@@ -540,13 +852,12 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 		refresh();
 
 		const addBtn = wrapper.createEl("button", { text: "+ add rule", cls: "chain-rule-add" });
-		addBtn.addEventListener("click", async () => {
+		addBtn.addEventListener("click", () => {
 			const c = this.plugin.taskSettings.chains[chainIdx];
 			if (c) {
 				if (!c[field]) c[field] = [];
 				c[field].push({ key: "" });
-				await this.plugin.saveSettings();
-				refresh();
+				void this.plugin.saveSettings().then(refresh);
 			}
 		});
 	}
@@ -580,11 +891,13 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 					cls: "chain-rule-input checkbox-status-mark",
 				});
 				markInput.value = status.mark;
-				markInput.addEventListener("change", async () => {
-					this.plugin.taskSettings.checkboxStatuses[idx]!.mark = markInput.value;
-					await this.plugin.saveSettings();
-					// Refresh so the icon preview updates to match the new mark
-					refresh();
+				markInput.addEventListener("change", () => {
+					this.plugin.taskSettings.checkboxStatuses[idx].mark = markInput.value;
+					void (async () => {
+						await this.plugin.saveSettings();
+						// Refresh so the icon preview updates to match the new mark
+						refresh();
+					})();
 				});
 
 				// Label input
@@ -594,18 +907,20 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 					cls: "chain-rule-input",
 				});
 				labelInput.value = status.label;
-				labelInput.addEventListener("change", async () => {
-					this.plugin.taskSettings.checkboxStatuses[idx]!.label = labelInput.value;
-					await this.plugin.saveSettings();
+				labelInput.addEventListener("change", () => {
+					this.plugin.taskSettings.checkboxStatuses[idx].label = labelInput.value;
+					void this.plugin.saveSettings();
 				});
 
 				// Remove button
 				const removeBtn = row.createEl("button", { text: "×", cls: "chain-rule-remove" });
 				removeBtn.setAttribute("aria-label", "Remove status");
-				removeBtn.addEventListener("click", async () => {
+				removeBtn.addEventListener("click", () => {
 					this.plugin.taskSettings.checkboxStatuses.splice(idx, 1);
-					await this.plugin.saveSettings();
-					refresh();
+					void (async () => {
+						await this.plugin.saveSettings();
+						refresh();
+					})();
 				});
 			});
 		};
@@ -613,107 +928,23 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 		refresh();
 
 		const addBtn = wrapper.createEl("button", { text: "+ add status", cls: "chain-rule-add" });
-		addBtn.addEventListener("click", async () => {
+		addBtn.addEventListener("click", () => {
 			this.plugin.taskSettings.checkboxStatuses.push({ mark: "", icon: "", label: "" });
-			await this.plugin.saveSettings();
-			refresh();
+			void (async () => {
+				await this.plugin.saveSettings();
+				refresh();
+			})();
 		});
 
 		const resetBtn = wrapper.createEl("button", { text: "Reset to defaults", cls: "chain-rule-add" });
-		resetBtn.style.marginLeft = "8px";
-		resetBtn.addEventListener("click", async () => {
+		resetBtn.addClass("chain-rule-reset-btn");
+		resetBtn.addEventListener("click", () => {
 			this.plugin.taskSettings.checkboxStatuses = [...DEFAULT_CHECKBOX_STATUSES];
-			await this.plugin.saveSettings();
-			refresh();
+			void (async () => {
+				await this.plugin.saveSettings();
+				refresh();
+			})();
 		});
-	}
-
-	// ── Linear settings ──────────────────────────────────────────────────────
-
-	private renderLinearSettings(containerEl: HTMLElement): void {
-		new Setting(containerEl).setName("Linear integration").setHeading();
-
-		// Issue folder
-		new Setting(containerEl)
-			.setName("Issue folder")
-			.setDesc("Folder where imported linear issues are created.")
-			.addText((text) =>
-				text
-					.setPlaceholder("Linear")
-					.setValue(this.plugin.taskSettings.linearIssueFolder)
-					.onChange(async (value) => {
-						this.plugin.taskSettings.linearIssueFolder = value.trim() || "Linear";
-						await this.plugin.saveSettings();
-					})
-			);
-
-		// Issue template
-		new Setting(containerEl)
-			.setName("Issue template")
-			.setDesc(
-				"Optional template file applied on top of imported linear issues. Its frontmatter is merged with the linear-managed frontmatter (linear keys take precedence); its body replaces the default note body. Supports {{title}}, {{identifier}}, {{url}}, {{status}}, {{priority}}, {{team}}."
-			)
-			.addText((text) => {
-				new FileSuggest(this.app, text.inputEl);
-				text
-					.setPlaceholder("Templates/linear-issue-template.md")
-					.setValue(this.plugin.taskSettings.linearTemplatePath)
-					.onChange(async (value) => {
-						this.plugin.taskSettings.linearTemplatePath = value.trim();
-						await this.plugin.saveSettings();
-					});
-			});
-
-		// Sync on open
-		new Setting(containerEl)
-			.setName("Sync on open")
-			.setDesc("Pull status updates from linear when Obsidian opens.")
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.taskSettings.linearSyncOnOpen).onChange(async (value) => {
-					this.plugin.taskSettings.linearSyncOnOpen = value;
-					await this.plugin.saveSettings();
-				})
-			);
-
-		// Sync interval
-		new Setting(containerEl)
-			.setName("Auto-sync interval (minutes)")
-			.setDesc("Poll linear for updates on this interval. Set to 0 to disable.")
-			.addSlider((slider) =>
-				slider
-					.setLimits(0, 120, 15)
-					.setValue(this.plugin.taskSettings.linearSyncIntervalMinutes)
-					.setDynamicTooltip()
-					.onChange(async (value) => {
-						this.plugin.taskSettings.linearSyncIntervalMinutes = value;
-						await this.plugin.saveSettings();
-						this.plugin.rescheduleLinearSync();
-					})
-			);
-
-		new Setting(containerEl).setName("Workspaces").setHeading();
-		containerEl.createEl("p", {
-			text: "Each workspace connects to one linear organization. You can use a personal API key (paste from linear → settings → API) or OAUTH.",
-			cls: "setting-item-description",
-		});
-
-		const wsContainer = containerEl.createDiv({ cls: "linear-workspace-list" });
-		this.renderWorkspaceList(wsContainer);
-
-		new Setting(containerEl).addButton((btn) =>
-			btn
-				.setButtonText("Add workspace")
-				.setCta()
-				.onClick(async () => {
-					this.plugin.taskSettings.linearWorkspaces.push({
-						id: `workspace-${Date.now()}`,
-						name: "New Workspace",
-						authType: "apiKey",
-					});
-					await this.plugin.saveSettings();
-					this.refresh();
-				})
-		);
 	}
 
 	private renderWorkspaceList(container: HTMLElement): void {
@@ -734,11 +965,13 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 			const header = section.createDiv({ cls: "chain-schema-header" });
 			new Setting(header).setName("").setHeading();
 			const removeBtn = header.createEl("button", { text: "Remove", cls: "chain-schema-remove-btn" });
-			removeBtn.addEventListener("click", async () => {
+			removeBtn.addEventListener("click", () => {
 				this.plugin.taskSettings.linearWorkspaces.splice(idx, 1);
-				await this.plugin.saveSettings();
-				this.plugin.linearManager?.refreshClients();
-				this.refresh();
+				void (async () => {
+					await this.plugin.saveSettings();
+					this.plugin.linearManager?.refreshClients();
+					this.display();
+				})();
 			});
 
 			// Workspace ID
@@ -750,7 +983,7 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 						.setPlaceholder("Acme")
 						.setValue(ws.id)
 						.onChange(async (value) => {
-							this.plugin.taskSettings.linearWorkspaces[idx]!.id = value.trim() || ws.id;
+							this.plugin.taskSettings.linearWorkspaces[idx].id = value.trim() || ws.id;
 							await this.plugin.saveSettings();
 						})
 				);
@@ -764,7 +997,7 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 						.setPlaceholder("Acme corp")
 						.setValue(ws.name)
 						.onChange(async (value) => {
-							this.plugin.taskSettings.linearWorkspaces[idx]!.name = value.trim() || "Workspace";
+							this.plugin.taskSettings.linearWorkspaces[idx].name = value.trim() || "Workspace";
 							await this.plugin.saveSettings();
 						})
 				);
@@ -778,10 +1011,10 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 					drop.addOption("oauth", "OAUTH");
 					drop.setValue(ws.authType);
 					drop.onChange(async (value) => {
-						this.plugin.taskSettings.linearWorkspaces[idx]!.authType = value as "apiKey" | "oauth";
+						this.plugin.taskSettings.linearWorkspaces[idx].authType = value as "apiKey" | "oauth";
 						await this.plugin.saveSettings();
 						this.plugin.linearManager?.refreshClients();
-						this.refresh();
+						this.display();
 					});
 				});
 
@@ -795,7 +1028,7 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 							.setPlaceholder("Lin_API_…")
 							.setValue(ws.apiKey ?? "")
 							.onChange(async (value) => {
-								this.plugin.taskSettings.linearWorkspaces[idx]!.apiKey = value.trim() || undefined;
+								this.plugin.taskSettings.linearWorkspaces[idx].apiKey = value.trim() || undefined;
 								await this.plugin.saveSettings();
 								this.plugin.linearManager?.refreshClients();
 							});
@@ -823,11 +1056,11 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 							.setButtonText("Disconnect")
 							.setDestructive()
 							.onClick(async () => {
-								this.plugin.taskSettings.linearWorkspaces[idx]!.oauthToken = undefined;
-								this.plugin.taskSettings.linearWorkspaces[idx]!.oauthRefreshToken = undefined;
+								this.plugin.taskSettings.linearWorkspaces[idx].oauthToken = undefined;
+								this.plugin.taskSettings.linearWorkspaces[idx].oauthRefreshToken = undefined;
 								await this.plugin.saveSettings();
 								this.plugin.linearManager?.refreshClients();
-								this.refresh();
+								this.display();
 							})
 					);
 				}

@@ -1,5 +1,5 @@
 import type { Granularity } from "../periodic/types";
-// eslint-disable-next-line no-restricted-imports -- Moment type is not re-exported from obsidian
+ 
 import type { Moment } from "moment";
 
 export type TimeRange =

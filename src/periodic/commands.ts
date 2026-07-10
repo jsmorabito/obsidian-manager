@@ -1,5 +1,5 @@
 import { Notice, TFile } from "obsidian";
-// eslint-disable-next-line no-restricted-imports
+ 
 import type moment from "moment";
 import type TimeManagerPlugin from "../main";
 import {

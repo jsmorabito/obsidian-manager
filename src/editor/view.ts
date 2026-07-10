@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-redundant-type-constituents */
 // Ported from quorafind/Obsidian-Daily-Notes-Editor (MIT).
 import {
 	ItemView,
@@ -6,6 +5,7 @@ import {
 	Scope,
 	TAbstractFile,
 	TFile,
+	ViewStateResult,
 	WorkspaceLeaf,
 } from "obsidian";
 import type TimeManagerPlugin from "../main";
@@ -18,8 +18,22 @@ import { SelectFolderModal, SelectTagModal } from "./SelectTargetModal";
 
 export const TIME_MANAGER_EDITOR_VIEW = "obsidian-time-tools-editor-view";
 
+// DailyNoteEditorView.svelte's exported functions/props, typed here since the
+// generic `*.svelte` ambient module declaration can't see this component's
+// specific instance shape.
+interface DailyNoteEditorViewInstance {
+	tick(): void;
+	check(): void;
+	fileCreate(file: TFile): void;
+	fileDelete(file: TFile): void;
+	resetScrollToTop(): void;
+	refreshCalendar(): void;
+	refreshInbox(): void;
+	scrollToFile(targetFile: TFile, behavior?: ScrollBehavior): Promise<void>;
+}
+
 export class DailyNoteView extends ItemView {
-	view!: DailyNoteEditorView;
+	view!: DailyNoteEditorView & DailyNoteEditorViewInstance;
 	plugin: TimeManagerPlugin;
 	scope: Scope;
 
@@ -126,7 +140,7 @@ export class DailyNoteView extends ItemView {
 		};
 	}
 
-	async setState(state: unknown, result?: any): Promise<void> {
+	async setState(state: unknown, result: ViewStateResult): Promise<void> {
 		this._setStateAt = Date.now();
 		await super.setState(state, result);
 		if (state && typeof state === "object" && !this.view) {
@@ -160,7 +174,7 @@ export class DailyNoteView extends ItemView {
 					tag:             this.tag,
 					scrollDirection: this.scrollDirection,
 				},
-			});
+			}) as DailyNoteEditorView & DailyNoteEditorViewInstance;
 
 			this.app.workspace.onLayoutReady(() => {
 				this.view.tick();
@@ -242,7 +256,7 @@ export class DailyNoteView extends ItemView {
 				});
 			});
 
-			menu.showAtMouseEvent(e as MouseEvent);
+			menu.showAtMouseEvent(e);
 		});
 
 		this.addAction("calendar-range", "Select date range", (e) => {
@@ -271,7 +285,7 @@ export class DailyNoteView extends ItemView {
 					new CustomRangeModal(this.app, (cr) => this.setCustomRange(cr)).open();
 				});
 			});
-			menu.showAtMouseEvent(e as MouseEvent);
+			menu.showAtMouseEvent(e);
 		});
 
 		// Presets menu.
@@ -300,7 +314,7 @@ export class DailyNoteView extends ItemView {
 					});
 				}
 			}
-			menu.showAtMouseEvent(e as MouseEvent);
+			menu.showAtMouseEvent(e);
 		});
 
 		this.addAction("refresh", "Refresh", () => {
@@ -329,7 +343,7 @@ export class DailyNoteView extends ItemView {
 		this.registerEvent(this.app.metadataCache.on("changed", scheduleInboxRefresh));
 	}
 
-	onPaneMenu(menu: Menu, source: "more-options" | "tab-header" | string): void {
+	onPaneMenu(menu: Menu, source: string): void {
 		if (source === "tab-header" || source === "more-options") {
 			menu.addItem((item) => {
 				// @ts-ignore — unofficial pinned API
@@ -353,7 +367,7 @@ export class DailyNoteView extends ItemView {
 
 		// Give Svelte one event-loop turn to process the reactive updates and
 		// re-run fileManager.updateOptions before we try to scroll.
-		await new Promise<void>((r) => setTimeout(r, 80));
+		await new Promise<void>((r) => window.setTimeout(r, 80));
 
 		if (this.view) await this.view.scrollToFile(file);
 	}
