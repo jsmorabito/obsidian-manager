@@ -62,7 +62,7 @@ export const DEFAULT_SETTINGS: TaskToolsSettings = {
 	statusBarDisplayMode: "filenames",
 	statusBarDotsCount: 7,
 	statusBarMaxItems: 5,
-	chainBarVisible: true,
+	chainBarVisible: false,
 	chainBarPosition: "center",
 	chains: [DEFAULT_CHAIN],
 	linearWorkspaces: [],
@@ -460,6 +460,17 @@ export class TaskToolsSettingTab extends PluginSettingTab {
 			);
 
 		maxItemsSetting.settingEl.toggle(this.plugin.taskSettings.statusBarDisplayMode === "filenames");
+
+		new Setting(containerEl)
+			.setName("Show chain bar")
+			.setDesc("Show the chain breadcrumb bar at the bottom of the screen.")
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.taskSettings.chainBarVisible).onChange(async (value) => {
+					this.plugin.taskSettings.chainBarVisible = value;
+					await this.plugin.saveSettings();
+					this.plugin.renderChainBreadcrumb();
+				})
+			);
 
 		new Setting(containerEl)
 			.setName("Chain bar position")

@@ -1216,7 +1216,7 @@ export default class ManagerPlugin extends Plugin {
 		}
 	}
 
-	private renderChainBreadcrumb(): void {
+	renderChainBreadcrumb(): void {
 		if (!this.chainStatusBarItem) return;
 		const el = this.chainStatusBarItem;
 		el.empty();
