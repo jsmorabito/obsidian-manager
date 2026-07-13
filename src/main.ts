@@ -1221,6 +1221,7 @@ export default class ManagerPlugin extends Plugin {
 		const el = this.chainStatusBarItem;
 		el.empty();
 
+		el.toggle(this.taskSettings.chainBarVisible);
 		if (!this.taskSettings.chainBarVisible) { this.positionChainBar(); return; }
 
 		const chainsWithCurrent = this.taskSettings.chains.filter((c) => this.findCurrentTask(c) !== undefined);
